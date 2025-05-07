@@ -1,0 +1,2 @@
+dwave-ocean-sdk>=7.1.0
+dash[diskcache]==2.17.1
