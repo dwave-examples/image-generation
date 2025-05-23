@@ -49,3 +49,27 @@ custom CSS can be added below.
     border-radius: 0.5rem;
     text-align: center;
 }
+
+div.left-column .left-column-layer-2 {
+    padding: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.header-wrapper {
+    padding: 3rem 2rem;
+}
+
+div.left-column .tab-content {
+    padding: 2rem 2rem 4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+div.left-column .tab {
+    padding: 1rem;
+    border: 1px solid #d6d6d6;
+}

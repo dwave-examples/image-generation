@@ -340,8 +340,10 @@ def create_interface():
                                     html.Div(
                                         className="left-column-layer-2",  # Padding and content wrapper
                                         children=[
-                                            html.H1(MAIN_HEADER),
-                                            html.P(DESCRIPTION),
+                                            html.Div([
+                                                html.H1(MAIN_HEADER),
+                                                html.P(DESCRIPTION),
+                                            ], className="header-wrapper"),
                                             generate_settings_form(),
                                         ],
                                     )
