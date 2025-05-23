@@ -46,6 +46,11 @@ div.tab.tab--disabled {
     margin-left: 1rem;
 }
 
+.tab-parent {
+    display: flex;
+    flex-direction: column;
+}
+
 .tab-content,
 .tab-parent {
     height: 100%;

@@ -43,6 +43,9 @@ custom CSS can be added below.
     height: 100%;
 }
 
-  /****************************/
- /*** CUSTOM CSS GOES HERE ***/
-/****************************/
+#input-file {
+    padding: 1rem;
+    border: 1px dashed var(--grey-dark);
+    border-radius: 0.5rem;
+    text-align: center;
+}

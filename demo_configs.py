@@ -40,19 +40,8 @@ SLIDER = {
     "value": 5,
 }
 
-# an example dropdown
-DROPDOWN = ["Option 1", "Option 2"]
-
-# an example checklist
-CHECKLIST = ["Option 1", "Option 2"]
-
-# an example radio list
-RADIO = ["Option 1", "Option 2"]
-
-# solver time limits in seconds (value means default)
-SOLVER_TIME = {
-    "min": 10,
-    "max": 300,
-    "step": 5,
-    "value": 10,
+NOISE = {
+    "min": 0,
+    "max": 1,
+    "step": 0.01,
 }

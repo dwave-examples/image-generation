@@ -32,15 +32,14 @@ button:hover {
     color: white;
 }
 
-#run-button,
-#cancel-button {
+.button-group button {
     width: 100%;
 }
 
-#cancel-button {
+.button-group:last-child {
     background-color: var(--red-light);
 }
 
-#cancel-button:hover {
+.button-group:last-child:hover {
     background-color: var(--red-dark);
 }
