@@ -2,3 +2,5 @@ dash[diskcache]~=3.0
 dwave-ocean-sdk>=7.1.0
 matplotlib~=3.10
 torch~=2.7
+dwave-pytorch-plugin
+torchvision
