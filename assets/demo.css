@@ -20,13 +20,13 @@ The following style rules can be altered or removed and any additional
 custom CSS can be added below.
 *******************************************************************/
 
-.tab-content-results {
+/* .tab-content-results {
     padding: 0 3rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
-}
+} */
 
 .solution-stats-table td:nth-child(2n) {
     text-align: right;
@@ -72,4 +72,12 @@ div.left-column .tab-content {
 div.left-column .tab {
     padding: 1rem;
     border: 1px solid #d6d6d6;
+}
+
+.graph {
+    height: 100%;
+}
+
+.graph-wrapper {
+    height: 100%;
 }

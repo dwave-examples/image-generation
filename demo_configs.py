@@ -22,22 +22,30 @@ THEME_COLOR_SECONDARY = "#2A7DE1"  # D-Wave blue default #2A7DE1
 
 THUMBNAIL = "static/dwave_logo.svg"
 
-APP_TITLE = "Demo Name"
-MAIN_HEADER = "Demo Name"
+APP_TITLE = "Discrete Variational Autoencoder"
+MAIN_HEADER = "Discrete Variational Autoencoder"
 DESCRIPTION = """\
-This is a Dash template for new examples. It includes some basic settings, tabs, and styling.
+MNIST training and image generation using a Discrete Variational
+Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 """
+
+QPU = "Advantage2_system1.3"
 
 #######################################
 # Sliders, buttons and option entries #
 #######################################
 
-# an example slider
-SLIDER = {
+SLIDER_LATENTS = {
+    "min": 128,
+    "max": 512,
+    "step": 64,
+    "value": 256,
+}
+SLIDER_EPOCHS = {
     "min": 1,
-    "max": 10,
+    "max": 80,
     "step": 1,
-    "value": 5,
+    "value": 10,
 }
 
 NOISE = {

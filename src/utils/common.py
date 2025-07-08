@@ -1,0 +1,134 @@
+# Copyright 2025 D-Wave
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from typing import Callable, Literal
+import random
+
+import torch
+import networkx as nx
+
+from dwave.system import DWaveSampler, FixedEmbeddingComposite
+from demo_configs import QPU
+
+
+def greedy_get_subgraph(
+    n_nodes: int, random_seed: int | None, graph: nx.Graph | None = None
+) -> tuple[nx.Graph, dict]:
+    """TODO"""
+    generator = random.Random(random_seed)
+    if graph is None:
+        qpu = DWaveSampler(solver=QPU)
+        graph = qpu.to_networkx_graph()
+    assert isinstance(graph, nx.Graph)
+    selected_nodes = [generator.choice(list(graph.nodes()))]
+    MAXIMUM_CONNECTIVITY = max([len(list(graph.neighbors(n))) for n in graph.nodes()])
+    while len(selected_nodes) < n_nodes:
+        maximum_connectivity = 0
+        target_maximum_connectivity = min(MAXIMUM_CONNECTIVITY, len(selected_nodes))
+        target_node = None
+        found_optimal_target_node = False
+        generator.shuffle(selected_nodes)
+        for node in selected_nodes:
+            neighbours = list(graph.neighbors(node))
+            generator.shuffle(neighbours)
+            for neighbour in neighbours:
+                if neighbour not in selected_nodes:
+                    # If we were to add neighbour to the selected nodes, how many of the
+                    # selected nodes would it be connected to?
+                    connectivity = len(
+                        set(graph.neighbors(neighbour)).intersection(selected_nodes)
+                    )
+                    if connectivity >= target_maximum_connectivity:
+                        found_optimal_target_node = True
+                        target_node = neighbour
+                        selected_nodes.append(target_node)
+                        break
+                    elif connectivity > maximum_connectivity:
+                        maximum_connectivity = connectivity
+                        target_node = neighbour
+            if found_optimal_target_node:
+                break
+        if found_optimal_target_node:
+            continue
+        selected_nodes.append(target_node)
+    subgraph = graph.subgraph(selected_nodes)
+    mapping = {
+        physical: logical
+        for (physical, logical) in zip(subgraph.nodes(), range(len(subgraph)))
+    }
+    return nx.relabel_nodes(subgraph, mapping), mapping
+
+
+def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, use_qpu):
+    """TODO: switch to work with refactored plugin"""
+    qpu = DWaveSampler(solver=QPU)
+    graph = qpu.to_networkx_graph()
+    graph, mapping = greedy_get_subgraph(
+        n_nodes=n_latents, random_seed=random_seed, graph=graph
+    )
+    if use_qpu:
+        sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
+        h_range, j_range = qpu.properties["h_range"], qpu.properties["j_range"]
+        sampler_kwargs = dict(
+            num_reads=num_reads,
+            # Set `answer_mode` to "raw" so no samples are aggregated
+            answer_mode="raw",
+            # Set `auto_scale`` to `False` so the sampler sample from the intended
+            # distribution
+            auto_scale=False,
+            annealing_time=annealing_time,
+            label="Examples - DVAE",
+        )
+    else:
+
+        from dwave.samplers import SimulatedAnnealingSampler
+
+        sampler = SimulatedAnnealingSampler()
+        h_range = j_range = None
+        sampler_kwargs = dict(
+            num_reads=num_reads,
+            beta_range=[1, 1],
+            proposal_acceptance_criterion="Gibbs",
+            randomize_order=True,
+            num_sweeps=100,
+        )
+    return sampler, graph, h_range, j_range, sampler_kwargs
+
+
+def get_latent_to_discrete(
+    mode: Literal["heaviside"] | None,
+) -> Callable[[torch.Tensor, int], torch.Tensor] | None:
+    """TODO"""
+    if mode == "heaviside":
+
+        def latent_to_discrete(logits: torch.Tensor, n_samples: int) -> torch.Tensor:
+            # logits is of shape (batch_size, n_discrete)
+            # we ignore n_samples as we won't be doing any stochastic processes
+            with torch.no_grad():
+                hard = (
+                    torch.heaviside(
+                        logits,
+                        values=torch.tensor(
+                            0, device=logits.device, dtype=logits.dtype
+                        ),
+                    )
+                    * 2
+                    - 1
+                )
+            # output
+            return (hard - logits.detach() + logits).unsqueeze(1)
+
+    elif mode is None:
+        return None
+
+    return latent_to_discrete

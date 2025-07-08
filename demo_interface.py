@@ -20,8 +20,9 @@ from dash import dcc, html
 from demo_configs import (
     DESCRIPTION,
     MAIN_HEADER,
-    SLIDER,
     NOISE,
+    SLIDER_EPOCHS,
+    SLIDER_LATENTS,
     THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
@@ -147,7 +148,12 @@ def generate_train_tab() -> html.Div:
             slider(
                 "Latents",
                 "n-latents",
-                SLIDER,
+                SLIDER_LATENTS,
+            ),
+            slider(
+                "Epochs",
+                "n-epochs",
+                SLIDER_EPOCHS,
             ),
             html.Label("Save to File Name (optional)"),
             dcc.Input(
@@ -172,11 +178,11 @@ def generate_generate_tab() -> html.Div:
             html.Div(
                 [
                     html.Label("VAE Training File"),
-                    dcc.Upload(
-                        id="input-file",
-                        children=html.Div(
-                            ["Drag and Drop or ", html.A("Select a File"), html.Div(id="filename")]
-                        ),
+                    # TODO: maybe a drop down list is better
+                    dcc.Input(
+                        id="model-file-name",
+                        type="text",
+                        value="model_256_40",
                     ),
                 ],
                 id="uploaded-settings",
@@ -192,6 +198,11 @@ def generate_generate_tab() -> html.Div:
                 id="noise",
                 type="number",
                 **NOISE,
+            ),
+            slider(
+                "Epochs",
+                "n-epochs-tune",
+                SLIDER_EPOCHS,
             ),
         ],
     )
@@ -212,14 +223,28 @@ def generate_settings_form() -> dcc.Tabs:
                 label="Train",
                 id="train-tab",
                 className="tab",
-                children=[generate_train_tab(), generate_run_buttons("Train", "Cancel Training")],
+                children=[
+                    # TODO: make progress bars look nicer
+                    # and decide on 1 (as for tuning) vs. 2 bars
+                    generate_train_tab(),
+                    html.Label("Epochs progress bar"),
+                    html.Progress(value="0", id="epoch-progress"),
+                    html.Label("Batch progress bar"),
+                    html.Progress(value="0", id="batch-progress"),
+                    generate_run_buttons("Train", "Cancel Training")
+                ],
             ),
             dcc.Tab(
                 label="Generate",
                 id="generate-tab",
                 value="generate-tab",
                 className="tab",
-                children=[generate_generate_tab(), generate_run_buttons("Generate", "Cancel Generation")],
+                children=[
+                    generate_generate_tab(),
+                    html.Label("Tuning progress bar"),
+                    html.Progress(value="0", id="tune-progress"),
+                    generate_run_buttons("Generate", "Cancel Generation")
+                ],
             ),
         ],
     )
@@ -230,9 +255,9 @@ def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
     return html.Div(
         className="button-group",
         children=[
-            html.Button(id=f"{'-'.join(run_text.lower().split(" "))}-button", children=run_text, n_clicks=0, disabled=False),
+            html.Button(id=f'{"-".join(run_text.lower().split(" "))}-button', children=run_text, n_clicks=0, disabled=False),
             html.Button(
-                id=f"{'-'.join(cancel_text.lower().split(" "))}-button",
+                id=f'{"-".join(cancel_text.lower().split(" "))}-button',
                 children=cancel_text,
                 n_clicks=0,
                 className="display-none",
@@ -369,7 +394,7 @@ def create_interface():
                                 mobile_breakpoint=0,
                                 children=[
                                     dcc.Tab(
-                                        label="Input",
+                                        label="Data",
                                         id="input-tab",
                                         value="input-tab",  # used for switching tabs programatically
                                         className="tab",
@@ -392,12 +417,42 @@ def create_interface():
                                             html.Div(
                                                 className="tab-content-results",
                                                 children=[
-                                                    dcc.Loading(
-                                                        parent_className="results",
-                                                        type="circle",
-                                                        color=THEME_COLOR_SECONDARY,
-                                                        # A Dash callback (in app.py) will generate content in the Div below
-                                                        children=html.Div(id="results"),
+                                                    # TODO: display results in a nicer way
+                                                    html.Div(
+                                                        className="graph-wrapper",
+                                                        children=[
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-output",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False,
+                                                                        # "autosizable": True,
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-reconstructed",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                        ]
                                                     ),
                                                     # Problem details dropdown
                                                     html.Div([html.Hr(), problem_details(1)]),
