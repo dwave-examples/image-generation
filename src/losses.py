@@ -14,7 +14,7 @@
 import torch
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 from dimod import Sampler, SampleSet
-from dwave.plugins.torch.utils import sample_to_tensor, spread
+from dwave.plugins.torch.utils import sampleset_to_tensor
 
 from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
@@ -69,7 +69,7 @@ def mmd_loss(
         grbm.J.mul_(1 / prefactor)
         h, J = grbm.ising
 
-    samples = sample_to_tensor(spread(sample_set)).to(spins.device)
+    samples = sampleset_to_tensor(sample_set).to(spins.device)
     spins = spins.reshape(-1, spins.shape[-1])
     kernel_matrix = kernel(torch.vstack((spins, samples)))
     num_spin_strings = spins.shape[0]
@@ -103,7 +103,7 @@ def nll_loss(
         resample=False,
         reset_deque=True,
     )
-    samples = sample_to_tensor(spread(sample_set)).to(spins.device)
+    samples = sampleset_to_tensor(sample_set).to(spins.device)
     spins = spins.reshape(-1, spins.shape[-1])
     nll = torch.mean(grbm(spins)) - torch.mean(grbm(samples))
     return prefactor, nll, sample_set

@@ -3,7 +3,7 @@ from dimod import BinaryQuadraticModel, Sampler, SampleSet, as_samples
 from dwave.system.temperatures import maximum_pseudolikelihood_temperature
 
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
-from dwave.plugins.torch.utils import sample_to_tensor, spread
+from dwave.plugins.torch.utils import sampleset_to_tensor
 
 
 def push_to_deque(deque, x, deque_size=None, dim=0):
@@ -145,7 +145,7 @@ class PersistentQPUSampleHelper:
         self.sample_set_vartype = sample_set.vartype
         self.sample_set_energy = sample_set.record.energy
         if resampling_condition:
-            tensor = sample_to_tensor(spread(sample_set))
+            tensor = sampleset_to_tensor(sample_set)
             if self.deque is None:
                 self.deque = tensor
             else:
