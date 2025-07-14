@@ -18,6 +18,7 @@ from __future__ import annotations
 from dash import dcc, html
 
 from demo_configs import (
+    DEFAULT_MODEL,
     DESCRIPTION,
     MAIN_HEADER,
     NOISE,
@@ -182,7 +183,7 @@ def generate_generate_tab() -> html.Div:
                     dcc.Input(
                         id="model-file-name",
                         type="text",
-                        value="model_256_40",
+                        value=DEFAULT_MODEL,
                     ),
                 ],
                 id="uploaded-settings",
