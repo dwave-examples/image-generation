@@ -3,8 +3,8 @@ from typing import Literal, Optional
 
 from matplotlib import pyplot as plt
 
-from encoder import Encoder
-from decoder import Decoder
+from src.encoder import Encoder
+from src.decoder import Decoder
 
 
 @dataclass

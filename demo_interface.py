@@ -18,17 +18,13 @@ from __future__ import annotations
 from dash import dcc, html
 
 from demo_configs import (
-    CHECKLIST,
     DESCRIPTION,
-    DROPDOWN,
     MAIN_HEADER,
-    RADIO,
     SLIDER,
-    SOLVER_TIME,
+    NOISE,
     THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
-from src.demo_enums import SolverType
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -138,69 +134,106 @@ def generate_options(options_list: list) -> list[dict]:
     return [{"label": label, "value": i} for i, label in enumerate(options_list)]
 
 
-def generate_settings_form() -> html.Div:
-    """This function generates settings for selecting the scenario, model, and solver.
+def generate_train_tab() -> html.Div:
+    """Settings for training the model.
 
     Returns:
-        html.Div: A Div containing the settings for selecting the scenario, model, and solver.
+        html.Div: A Div containing the settings for latents and save file name.
     """
-    dropdown_options = generate_options(DROPDOWN)
-    checklist_options = generate_options(CHECKLIST)
-    radio_options = generate_options(RADIO)
-
-    solver_options = [
-        {"label": solver_type.label, "value": solver_type.value} for solver_type in SolverType
-    ]
 
     return html.Div(
         className="settings",
         children=[
             slider(
-                "Example Slider",
-                "slider",
+                "Latents",
+                "n-latents",
                 SLIDER,
             ),
-            dropdown(
-                "Example Dropdown",
-                "dropdown",
-                sorted(dropdown_options, key=lambda op: op["value"]),
-            ),
-            checklist(
-                "Example Checklist",
-                "checklist",
-                sorted(checklist_options, key=lambda op: op["value"]),
-                [0],
-            ),
-            radio(
-                "Example Radio",
-                "radio",
-                sorted(radio_options, key=lambda op: op["value"]),
-                0,
-            ),
-            dropdown(
-                "Solver",
-                "solver-type-select",
-                sorted(solver_options, key=lambda op: op["value"]),
-            ),
-            html.Label("Solver Time Limit (seconds)"),
+            html.Label("Save to File Name (optional)"),
             dcc.Input(
-                id="solver-time-limit",
-                type="number",
-                **SOLVER_TIME,
+                id="file-name",
+                type="text",
             ),
         ],
     )
 
 
-def generate_run_buttons() -> html.Div:
-    """Run and cancel buttons to run the optimization."""
+def generate_generate_tab() -> html.Div:
+    """Settings for generating.
+
+    Returns:
+        html.Div: A Div containing the settings for selecting the training file and other settings.
+    """
+    radio_options = generate_options(["Tune Parameters"])
+
     return html.Div(
-        id="button-group",
+        className="settings",
         children=[
-            html.Button(id="run-button", children="Run Optimization", n_clicks=0, disabled=False),
+            html.Div(
+                [
+                    html.Label("VAE Training File"),
+                    dcc.Upload(
+                        id="input-file",
+                        children=html.Div(
+                            ["Drag and Drop or ", html.A("Select a File"), html.Div(id="filename")]
+                        ),
+                    ),
+                ],
+                id="uploaded-settings",
+            ),
+            checklist(
+                "",
+                "tune-params",
+                sorted(radio_options, key=lambda op: op["value"]),
+                [0],
+            ),
+            html.Label("Noise (optional)"),
+            dcc.Input(
+                id="noise",
+                type="number",
+                **NOISE,
+            ),
+        ],
+    )
+
+
+def generate_settings_form() -> dcc.Tabs:
+    """This function generates settings training and generating.
+
+    Returns:
+        dcc.Tabs: Tabs containing settings for training and generation.
+    """
+    return dcc.Tabs(
+        id="setting-tabs",
+        value="generate-tab",
+        mobile_breakpoint=0,
+        children=[
+            dcc.Tab(
+                label="Train",
+                id="train-tab",
+                className="tab",
+                children=[generate_train_tab(), generate_run_buttons("Train", "Cancel Training")],
+            ),
+            dcc.Tab(
+                label="Generate",
+                id="generate-tab",
+                value="generate-tab",
+                className="tab",
+                children=[generate_generate_tab(), generate_run_buttons("Generate", "Cancel Generation")],
+            ),
+        ],
+    )
+
+
+def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
+    """Run and cancel buttons to run the problem."""
+    return html.Div(
+        className="button-group",
+        children=[
+            html.Button(id=f"{'-'.join(run_text.lower().split(" "))}-button", children=run_text, n_clicks=0, disabled=False),
             html.Button(
-                id="cancel-button",
-                children="Cancel Optimization",
+                id=f"{'-'.join(cancel_text.lower().split(" "))}-button",
+                children=cancel_text,
                 n_clicks=0,
                 className="display-none",
             ),
@@ -307,10 +340,11 @@ def create_interface():
                                     html.Div(
                                         className="left-column-layer-2",  # Padding and content wrapper
                                         children=[
-                                            html.H1(MAIN_HEADER),
-                                            html.P(DESCRIPTION),
+                                            html.Div([
+                                                html.H1(MAIN_HEADER),
+                                                html.P(DESCRIPTION),
+                                            ], className="header-wrapper"),
                                             generate_settings_form(),
-                                            generate_run_buttons(),
                                         ],
                                     )
                                 ],

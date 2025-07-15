@@ -14,15 +14,12 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, Union
-
 import dash
-from dash import MATCH, ctx
+from dash import MATCH
 from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
 
 from demo_interface import generate_problem_details_table_rows
-from src.demo_enums import SolverType
+from src.discrete_vae import run_generate, run_training
 
 
 @dash.callback(
@@ -53,116 +50,127 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
 
 
 @dash.callback(
-    Output("input", "children"),
-    inputs=[
-        Input("slider", "value"),
-    ],
+    Output("filename", "children"),
+    Input("input-file", "filename"),
+    prevent_initial_call=True,
 )
-def render_initial_state(slider_value: int) -> str:
-    """Runs on load and any time the value of the slider is updated.
-        Add `prevent_initial_call=True` to skip on load runs.
+def read_input_file(filename: str) -> str:
+    """Display filename when file is selected.
 
     Args:
-        slider_value: The value of the slider.
+        filename: The name of the uploaded file.
 
     Returns:
-        str: The content of the input tab.
+        filename: The name of the file that was uploaded to display in the UI.
     """
-    return f"Put demo input here. The current slider value is {slider_value}."
 
-
-class RunOptimizationReturn(NamedTuple):
-    """Return type for the ``run_optimization`` callback function."""
-
-    results: str = dash.no_update
-    problem_details_table: list = dash.no_update
-    # Add more return variables here. Return values for callback functions
-    # with many variables should be returned as a NamedTuple for clarity.
+    return filename
 
 
 @dash.callback(
-    # The Outputs below must align with `RunOptimizationReturn`.
     Output("results", "children"),
     Output("problem-details", "children"),
     background=True,
     inputs=[
-        # The first string in the Input/State elements below must match an id in demo_interface.py
-        # Remove or alter the following id's to match any changes made to demo_interface.py
-        Input("run-button", "n_clicks"),
-        State("solver-type-select", "value"),
-        State("solver-time-limit", "value"),
-        State("slider", "value"),
-        State("dropdown", "value"),
-        State("checklist", "value"),
-        State("radio", "value"),
+        Input("train-button", "n_clicks"),
+        State("n-latents", "value"),
+        State("file-name", "value"),
     ],
     running=[
-        (Output("cancel-button", "className"), "", "display-none"),  # Show/hide cancel button.
-        (Output("run-button", "className"), "display-none", ""),  # Hides run button while running.
+        (Output("cancel-training-button", "className"), "", "display-none"),  # Show/hide cancel button.
+        (Output("train-button", "className"), "display-none", ""),  # Hides run button while running.
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("results-tab", "label"), "Loading...", "Results"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
-        (Output("run-in-progress", "data"), True, False),  # Can block certain callbacks.
     ],
-    cancel=[Input("cancel-button", "n_clicks")],
+    cancel=[Input("cancel-training-button", "n_clicks")],
     prevent_initial_call=True,
 )
-def run_optimization(
-    # The parameters below must match the `Input` and `State` variables found
-    # in the `inputs` list above.
-    run_click: int,
-    solver_type: Union[SolverType, int],
-    time_limit: float,
-    slider_value: int,
-    dropdown_value: int,
-    checklist_value: list,
-    radio_value: int,
-) -> RunOptimizationReturn:
-    """Runs the optimization and updates UI accordingly.
+def train(train_click: int, n_latents: int, file_name: str) -> tuple[str, list]:
+    """Runs training and updates UI accordingly.
 
-    This is the main function which is called when the ``Run Optimization`` button is clicked.
-    This function takes in all form values and runs the optimization, updates the run/cancel
-    buttons, deactivates (and reactivates) the results tab, and updates all relevant HTML
-    components.
+    This function is called when the ``Train`` button is clicked. It takes in all form values and
+    runs the training, updates the run/cancel buttons, deactivates (and reactivates) the results
+    tab, and updates all relevant HTML components.
 
     Args:
-        run_click: The (total) number of times the run button has been clicked.
-        solver_type: The solver to use for the optimization run defined by SolverType in demo_enums.py.
-        time_limit: The solver time limit.
-        slider_value: The value of the slider.
-        dropdown_value: The value of the dropdown.
-        checklist_value: A list of the values of the checklist.
-        radio_value: The value of the radio.
+        train_click: The (total) number of times the train button has been clicked.
+        n_latents: TODO
+        file_name: TODO
 
     Returns:
-        A NamedTuple (RunOptimizationReturn) containing all outputs to be used when updating the HTML
+        A tuple containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
             results: The results to display in the results tab.
             problem-details: List of the table rows for the problem details table.
     """
-
-    # Only run optimization code if this function was triggered by a click on `run-button`.
-    # Setting `Input` as exclusively `run-button` and setting `prevent_initial_call=True`
-    # also accomplishes this.
-    if run_click == 0 or ctx.triggered_id != "run-button":
-        raise PreventUpdate
-
-    solver_type = SolverType(solver_type)
-
-
-    ###########################
-    ### YOUR CODE GOES HERE ###
-    ###########################
-
+    image = run_training(n_latents, file_name)
 
     # Generates a list of table rows for the problem details table.
     problem_details_table = generate_problem_details_table_rows(
-        solver=solver_type.label,
-        time_limit=time_limit,
+        n_latents,
+        file_name,
     )
 
-    return RunOptimizationReturn(
-        results="Put demo results here.",
-        problem_details_table=problem_details_table,
+    return (
+        image,
+        problem_details_table,
+    )
+
+
+@dash.callback(
+    Output("results", "children", allow_duplicate=True),
+    Output("problem-details", "children", allow_duplicate=True),
+    background=True,
+    inputs=[
+        Input("generate-button", "n_clicks"),
+        State("input-file", "filename"),
+        State("tune-params", "value"),
+        State("noise", "value"),
+    ],
+    running=[
+        (Output("cancel-generation-button", "className"), "", "display-none"),  # Show/hide cancel button.
+        (Output("generate-button", "className"), "display-none", ""),  # Hides run button while running.
+        (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
+        (Output("results-tab", "label"), "Loading...", "Results"),
+        (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
+    ],
+    cancel=[Input("cancel-generation-button", "n_clicks")],
+    prevent_initial_call=True,
+)
+def generate(
+    generate_click: int,
+    training_file_name: str,
+    tune_parameters: list,
+    noise: float,
+) -> tuple[str, list]:
+    """Runs generation and updates UI accordingly.
+
+    This function is called when the ``Generate`` button is clicked. It takes in all form values and
+    runs the generation, updates the run/cancel buttons, deactivates (and reactivates) the results
+    tab, and updates all relevant HTML components.
+
+    Args:
+        generate_click: The (total) number of times the generate button has been clicked.
+        training_file_name: TODO
+        tune_parameters: TODO
+        noise: TODO
+
+    Returns:
+        A tuple containing all outputs to be used when updating the HTML
+        template (in ``demo_interface.py``). These are:
+
+            results: The results to display in the results tab.
+            problem-details: List of the table rows for the problem details table.
+    """
+    image = run_generate(training_file_name, bool(len(tune_parameters)), noise)
+
+
+    # Generates a list of table rows for the problem details table.
+    problem_details_table = generate_problem_details_table_rows(training_file_name, tune_parameters)
+
+    return (
+        image,
+        problem_details_table,
     )
