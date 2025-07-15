@@ -20,6 +20,7 @@ import time
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
+from plotly import graph_objects as go
 
 from demo_interface import generate_problem_details_table_rows
 from src.model_wrapper import ModelWrapper
@@ -85,16 +86,8 @@ def read_input_file(filename: str) -> str:
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("results-tab", "label"), "Loading...", "Results"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
-        (
-            Output("batch-progress", "style"),
-            {"visibility": "visible"},
-            {"visibility": "hidden"},
-        ),
-        (
-            Output("epoch-progress", "style"),
-            {"visibility": "visible"},
-            {"visibility": "hidden"},
-        ),
+        (Output("batch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
+        (Output("epoch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
     progress=[
@@ -105,7 +98,13 @@ def read_input_file(filename: str) -> str:
     ],
     prevent_initial_call=True,
 )
-def train(set_progress, train_click: int, n_latents: int, n_epochs: int, file_name: str) -> tuple[str, list]:
+def train(
+    set_progress,
+    train_click: int,
+    n_latents: int,
+    n_epochs: int,
+    file_name: str
+) -> tuple[go.Figure, go.Figure, go.Figure]:
     """Runs training and updates UI accordingly.
 
     This function is called when the ``Train`` button is clicked. It takes in all form values and
@@ -115,14 +114,16 @@ def train(set_progress, train_click: int, n_latents: int, n_epochs: int, file_na
     Args:
         train_click: The (total) number of times the train button has been clicked.
         n_latents: TODO
+        n_epochs: TODO
         file_name: TODO
 
     Returns:
         A tuple containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
-            results: The results to display in the results tab.
-            problem-details: List of the table rows for the problem details table.
+            fig_output: TODO
+            fig_loss: TODO
+            fig_reconstructed: TODO
     """
     model_path = Path("models")
 
@@ -160,20 +161,18 @@ def train(set_progress, train_click: int, n_latents: int, n_epochs: int, file_na
         }, f)
 
     with open(model_path / file_name / "losses.json", "w") as f:
-            json.dump({
-                "mse_losses": dvae._tpar["mse_losses"],
-                "dvae_losses": dvae._tpar["dvae_losses"],
-            }, f)
+        json.dump({
+            "mse_losses": dvae._tpar["mse_losses"],
+            "dvae_losses": dvae._tpar["dvae_losses"],
+        }, f)
 
     mse_losses, dvae_losses = dvae._tpar["mse_losses"], dvae._tpar["dvae_losses"]
 
     fig_output = dvae.generate_output()
     if mse_losses and dvae_losses:
         fig_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
-    fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    # Generates a list of table rows for the problem details table.
-    # problem_details_table = generate_problem_details_table_rows(...)
+    fig_reconstructed = dvae.generate_reconstucted_samples()
 
     return fig_output, fig_loss, fig_reconstructed
 
@@ -197,11 +196,7 @@ def train(set_progress, train_click: int, n_latents: int, n_epochs: int, file_na
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("results-tab", "label"), "Loading...", "Results"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
-        (
-            Output("tune-progress", "style"),
-            {"visibility": "visible"},
-            {"visibility": "hidden"},
-        ),
+        (Output("tune-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],
     progress=[
         Output("tune-progress", "value"),
@@ -217,7 +212,7 @@ def generate(
     tune_parameters: list,
     noise: float,
     n_epochs: int,
-) -> tuple[str, list]:
+) -> tuple[go.Figure, go.Figure, go.Figure]:
     """Runs generation and updates UI accordingly.
 
     This function is called when the ``Generate`` button is clicked. It takes in all form values and
@@ -234,8 +229,9 @@ def generate(
         A tuple containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
-            results: The results to display in the results tab.
-            problem-details: List of the table rows for the problem details table.
+            fig_output: TODO
+            fig_loss: TODO
+            fig_reconstructed: TODO
     """
     model_path = Path("models")
 
@@ -267,6 +263,7 @@ def generate(
                 f'Learning rate GRBM: {dvae._tpar["grbm_lr_schedule"][dvae._tpar["opt_step"]]:.3E} '
                 f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
             )
+
         training_file_name += f"_tuned_{n_epochs}"
 
         loss_data["mse_losses"] += dvae._tpar["mse_losses"]
@@ -281,9 +278,7 @@ def generate(
     fig_output = dvae.generate_output()
     if mse_losses and dvae_losses:
         fig_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
-    fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    # Generates a list of table rows for the problem details table.
-    # problem_details_table = generate_problem_details_table_rows(...)
+    fig_reconstructed = dvae.generate_reconstucted_samples()
 
     return fig_output, fig_loss, fig_reconstructed

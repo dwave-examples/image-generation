@@ -19,11 +19,13 @@ class Decoder(torch.nn.Module):
         super().__init__()
         channels = [n_latents, 128, 64, 32, 1]
         layers = []
+
         # The input will be of shape (batch_size, n_latents), we need to project it
         # to the shape (batch_size, n_latents, 2, 2)
         self.increase_latent_dim = torch.nn.Linear(n_latents, n_latents * 2 * 2)
         self.make_2x2_images = torch.nn.Unflatten(-1, (n_latents, 2, 2))
         self.merge_batch_dim_and_replica_dim = torch.nn.Flatten(start_dim=0, end_dim=1)
+
         for i in range(len(channels) - 1):
             # A transposed convolutional layer does not modify the image size
             layers.append(
@@ -31,6 +33,7 @@ class Decoder(torch.nn.Module):
                     channels[i], channels[i + 1], kernel_size=3, stride=1, padding=1
                 )
             )
+
             # Batch normalisation is used to stabilise the learning process
             layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
             layers.append(torch.nn.Dropout2d(0.2))
@@ -38,6 +41,7 @@ class Decoder(torch.nn.Module):
             layers.append(torch.nn.Upsample(scale_factor=2))
             # Finally, we apply a non-linearity
             layers.append(torch.nn.LeakyReLU())
+
         # We append a last convolutional transpose layer to obtain the final image
         layers.append(
             torch.nn.ConvTranspose2d(
@@ -53,6 +57,7 @@ class Decoder(torch.nn.Module):
         replica_dim = x.shape[1]
         x = self.merge_batch_dim_and_replica_dim(x)
         x = self.convtrans(x)
+
         return x.reshape(batch_dim, replica_dim, *x.shape[1:])
 
 
@@ -61,9 +66,11 @@ class DecoderV2(torch.nn.Module):
         super().__init__()
         channels = [256, 64, 16, 4, 1]
         layers = []
+
         self.increase_latent_dim = torch.nn.Linear(n_latents, channels[0] * 2 * 2)
         self.make_2x2_images = torch.nn.Unflatten(-1, (channels[0], 2, 2))
         self.merge_batch_dim_and_replica_dim = torch.nn.Flatten(start_dim=0, end_dim=1)
+
         for i in range(len(channels) - 1):
             layers.append(
                 torch.nn.ConvTranspose2d(
@@ -78,6 +85,7 @@ class DecoderV2(torch.nn.Module):
             layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
             layers.append(torch.nn.Dropout2d(0.2))
             layers.append(torch.nn.LeakyReLU())
+
         self.convtrans = torch.nn.Sequential(*layers[:-3])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -86,4 +94,5 @@ class DecoderV2(torch.nn.Module):
         replica_dim = x.shape[1]
         x = self.merge_batch_dim_and_replica_dim(x)
         x = self.convtrans(x)
+
         return x.reshape(batch_dim, replica_dim, *x.shape[1:])

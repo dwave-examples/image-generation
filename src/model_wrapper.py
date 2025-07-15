@@ -26,8 +26,6 @@ from .utils.common import get_latent_to_discrete, get_sampler_and_sampler_kwargs
 from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 from .encoder import Encoder
 from .decoder import Decoder
-# from .encoder import EncoderV2 as Encoder
-# from .decoder import DecoderV2 as Decoder
 
 import numpy as np
 import torch
@@ -39,7 +37,6 @@ from torchvision.utils import make_grid
 from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 
-# from dwave.plugins.torch.autoencoder.losses.mmd import RadialBasisFunction, mmd_loss
 from .losses import RadialBasisFunction, mmd_loss
 
 
@@ -50,6 +47,7 @@ def train_dvae(opt_step: int, epoch: int) -> bool:
         opt_step: The current optimization step.
         epoch: The current epoch.
     """
+    ###TODO: this is not useful in its current state
     return True
 
 
@@ -60,9 +58,8 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
         opt_step: The current optimization step.
         epoch: The current epoch.
     """
-    if epoch < 6 and opt_step % 10 == 0:
-        return True
-    return False
+ 
+    return epoch < 6 and opt_step % 10 == 0
 
 
 class TrainingError(Exception):

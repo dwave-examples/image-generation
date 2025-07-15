@@ -171,7 +171,6 @@ def generate_generate_tab() -> html.Div:
     Returns:
         html.Div: A Div containing the settings for selecting the training file and other settings.
     """
-    radio_options = generate_options(["Tune Parameters"])
 
     return html.Div(
         className="settings",
@@ -191,8 +190,8 @@ def generate_generate_tab() -> html.Div:
             checklist(
                 "",
                 "tune-params",
-                sorted(radio_options, key=lambda op: op["value"]),
-                [0],
+                generate_options(["Tune Parameters"]),
+                [],
             ),
             html.Label("Noise (optional)"),
             dcc.Input(

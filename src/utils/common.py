@@ -29,18 +29,23 @@ def greedy_get_subgraph(
     if graph is None:
         qpu = DWaveSampler(solver=QPU)
         graph = qpu.to_networkx_graph()
+
     assert isinstance(graph, nx.Graph)
+
     selected_nodes = [generator.choice(list(graph.nodes()))]
     MAXIMUM_CONNECTIVITY = max([len(list(graph.neighbors(n))) for n in graph.nodes()])
+
     while len(selected_nodes) < n_nodes:
         maximum_connectivity = 0
         target_maximum_connectivity = min(MAXIMUM_CONNECTIVITY, len(selected_nodes))
         target_node = None
         found_optimal_target_node = False
         generator.shuffle(selected_nodes)
+
         for node in selected_nodes:
             neighbours = list(graph.neighbors(node))
             generator.shuffle(neighbours)
+
             for neighbour in neighbours:
                 if neighbour not in selected_nodes:
                     # If we were to add neighbour to the selected nodes, how many of the
@@ -56,16 +61,21 @@ def greedy_get_subgraph(
                     elif connectivity > maximum_connectivity:
                         maximum_connectivity = connectivity
                         target_node = neighbour
+
             if found_optimal_target_node:
                 break
+
         if found_optimal_target_node:
             continue
+
         selected_nodes.append(target_node)
+
     subgraph = graph.subgraph(selected_nodes)
     mapping = {
         physical: logical
         for (physical, logical) in zip(subgraph.nodes(), range(len(subgraph)))
     }
+
     return nx.relabel_nodes(subgraph, mapping), mapping
 
 
@@ -76,6 +86,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
     graph, mapping = greedy_get_subgraph(
         n_nodes=n_latents, random_seed=random_seed, graph=graph
     )
+
     if use_qpu:
         sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
         linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
@@ -89,8 +100,8 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
             annealing_time=annealing_time,
             label="Examples - DVAE",
         )
-    else:
 
+    else:
         from dwave.samplers import SimulatedAnnealingSampler
 
         sampler = SimulatedAnnealingSampler()
@@ -102,6 +113,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
             randomize_order=True,
             num_sweeps=100,
         )
+
     return sampler, sampler_kwargs, graph, linear_range, quadratic_range
 
 
@@ -110,7 +122,6 @@ def get_latent_to_discrete(
 ) -> Callable[[torch.Tensor, int], torch.Tensor] | None:
     """TODO"""
     if mode == "heaviside":
-
         def latent_to_discrete(logits: torch.Tensor, n_samples: int) -> torch.Tensor:
             # logits is of shape (batch_size, n_discrete)
             # we ignore n_samples as we won't be doing any stochastic processes

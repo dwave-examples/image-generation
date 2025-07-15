@@ -42,8 +42,11 @@ class RadialBasisFunction(torch.nn.Module):
     ) -> torch.Tensor | float:
         if self.bandwidth is None:
             assert l2_distance_matrix is not None
+
             num_samples = l2_distance_matrix.shape[0]
+
             return l2_distance_matrix.sum() / (num_samples * (num_samples - 1))
+
         return self.bandwidth
 
     def forward(self, x):
@@ -51,9 +54,8 @@ class RadialBasisFunction(torch.nn.Module):
         bandwidth = (
             self.get_bandwidth(distance_matrix.detach()) * self.bandwidth_multipliers
         )
-        return torch.exp(
-            -distance_matrix.unsqueeze(0) / bandwidth.reshape(-1, 1, 1)
-        ).sum(dim=0)
+
+        return torch.exp(-distance_matrix.unsqueeze(0) / bandwidth.reshape(-1, 1, 1)).sum(dim=0)
 
 
 def mmd_loss(
@@ -75,6 +77,7 @@ def mmd_loss(
             quadratic_range=quadratic_range,
             sample_params=sampler_kwargs
         )
+
     spins = spins.reshape(-1, spins.shape[-1])
 
     kernel_matrix = kernel(torch.vstack((spins, samples)))
@@ -82,11 +85,13 @@ def mmd_loss(
     spin_spin_kernels = kernel_matrix[:num_spin_strings, :num_spin_strings]
     sample_sample_kernels = kernel_matrix[num_spin_strings:, num_spin_strings:]
     spin_sample_kernels = kernel_matrix[:num_spin_strings, num_spin_strings:]
+
     mmd = (
         spin_spin_kernels.mean()
         - 2 * spin_sample_kernels.mean()
         + sample_sample_kernels.mean()
     )
+
     return mmd
 
 
@@ -113,7 +118,9 @@ def nll_loss(
         resample=False,
         reset_deque=True,
     )
+
     samples = grbm.sampleset_to_tensor(sample_set, device=spins.device)
     spins = spins.reshape(-1, spins.shape[-1])
     nll = torch.mean(grbm(spins)) - torch.mean(grbm(samples))
+
     return prefactor, nll, sample_set

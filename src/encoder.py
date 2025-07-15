@@ -20,6 +20,7 @@ class Encoder(torch.nn.Module):
         super().__init__()
         channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
         layers = []
+
         for i in range(len(channels) - 1):
             # A convolutional layer does not modify the image size
             layers.append(
@@ -33,6 +34,7 @@ class Encoder(torch.nn.Module):
             layers.append(torch.nn.MaxPool2d(kernel_size=2, stride=2))
             # Finally, we apply a non-linearity
             layers.append(torch.nn.LeakyReLU())
+
         layers = layers[:-1]  # Remove the last LeakyReLU
         self.conv = torch.nn.Sequential(*layers)
         self.flatten_last_two_dims = torch.nn.Flatten(start_dim=-2, end_dim=-1)
@@ -43,6 +45,7 @@ class Encoder(torch.nn.Module):
         x = self.conv(x)
         x = self.flatten_last_two_dims(x)
         x = self.projection(x)
+
         return self.flatten(x)  # .clip(-2.8, 2.8)
 
 
@@ -51,6 +54,7 @@ class EncoderV2(torch.nn.Module):
         super().__init__()
         channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
         layers = []
+
         for i in range(len(channels) - 1):
             layers.append(
                 torch.nn.Conv2d(
@@ -59,6 +63,7 @@ class EncoderV2(torch.nn.Module):
             )
             layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
             layers.append(torch.nn.LeakyReLU())
+
         layers = layers[:-1]  # Remove the last LeakyReLU
         self.conv = torch.nn.Sequential(*layers)
         self.flatten = torch.nn.Flatten()
