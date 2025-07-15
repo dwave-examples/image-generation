@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Literal
 import random
+from typing import Callable, Literal
 
-import torch
 import networkx as nx
-
+import torch
 from dwave.system import DWaveSampler, FixedEmbeddingComposite
+
 from demo_configs import QPU
 
 
@@ -50,9 +50,7 @@ def greedy_get_subgraph(
                 if neighbour not in selected_nodes:
                     # If we were to add neighbour to the selected nodes, how many of the
                     # selected nodes would it be connected to?
-                    connectivity = len(
-                        set(graph.neighbors(neighbour)).intersection(selected_nodes)
-                    )
+                    connectivity = len(set(graph.neighbors(neighbour)).intersection(selected_nodes))
                     if connectivity >= target_maximum_connectivity:
                         found_optimal_target_node = True
                         target_node = neighbour
@@ -72,8 +70,7 @@ def greedy_get_subgraph(
 
     subgraph = graph.subgraph(selected_nodes)
     mapping = {
-        physical: logical
-        for (physical, logical) in zip(subgraph.nodes(), range(len(subgraph)))
+        physical: logical for (physical, logical) in zip(subgraph.nodes(), range(len(subgraph)))
     }
 
     return nx.relabel_nodes(subgraph, mapping), mapping
@@ -83,9 +80,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
     """TODO: switch to work with refactored plugin"""
     qpu = DWaveSampler(solver=QPU)
     graph = qpu.to_networkx_graph()
-    graph, mapping = greedy_get_subgraph(
-        n_nodes=n_latents, random_seed=random_seed, graph=graph
-    )
+    graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
 
     if use_qpu:
         sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
@@ -122,6 +117,7 @@ def get_latent_to_discrete(
 ) -> Callable[[torch.Tensor, int], torch.Tensor] | None:
     """TODO"""
     if mode == "heaviside":
+
         def latent_to_discrete(logits: torch.Tensor, n_samples: int) -> torch.Tensor:
             # logits is of shape (batch_size, n_discrete)
             # we ignore n_samples as we won't be doing any stochastic processes
@@ -129,9 +125,7 @@ def get_latent_to_discrete(
                 hard = (
                     torch.heaviside(
                         logits,
-                        values=torch.tensor(
-                            0, device=logits.device, dtype=logits.dtype
-                        ),
+                        values=torch.tensor(0, device=logits.device, dtype=logits.dtype),
                     )
                     * 2
                     - 1

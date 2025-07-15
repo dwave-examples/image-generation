@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 import json
-from pathlib import Path
 import time
+from pathlib import Path
 
 import dash
 from dash import MATCH
@@ -81,8 +82,16 @@ def read_input_file(filename: str) -> str:
         State("file-name", "value"),
     ],
     running=[
-        (Output("cancel-training-button", "className"), "", "display-none"),  # Show/hide cancel button.
-        (Output("train-button", "className"), "display-none", ""),  # Hides run button while running.
+        (
+            Output("cancel-training-button", "className"),
+            "",
+            "display-none",
+        ),  # Show/hide cancel button.
+        (
+            Output("train-button", "className"),
+            "display-none",
+            "",
+        ),  # Hides run button while running.
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("results-tab", "label"), "Loading...", "Results"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
@@ -94,16 +103,12 @@ def read_input_file(filename: str) -> str:
         Output("batch-progress", "value"),
         Output("batch-progress", "max"),
         Output("epoch-progress", "value"),
-        Output("epoch-progress", "max")
+        Output("epoch-progress", "max"),
     ],
     prevent_initial_call=True,
 )
 def train(
-    set_progress,
-    train_click: int,
-    n_latents: int,
-    n_epochs: int,
-    file_name: str
+    set_progress, train_click: int, n_latents: int, n_epochs: int, file_name: str
 ) -> tuple[go.Figure, go.Figure, go.Figure]:
     """Runs training and updates UI accordingly.
 
@@ -150,21 +155,27 @@ def train(
     dvae.save(file_path=model_path / file_name)
 
     with open(model_path / file_name / "parameters.json", "w") as f:
-        json.dump({
-            "n_latents": n_latents,
-            "use_qpu": dvae.USE_QPU,
-            "num_read": dvae.NUM_READS,
-            "loss_function": dvae.LOSS_FUNCTION,
-            "image_size": dvae.IMAGE_SIZE,
-            "batch_size": dvae.BATCH_SIZE,
-            "dateset_size": dvae.DATASET_SIZE,
-        }, f)
+        json.dump(
+            {
+                "n_latents": n_latents,
+                "use_qpu": dvae.USE_QPU,
+                "num_read": dvae.NUM_READS,
+                "loss_function": dvae.LOSS_FUNCTION,
+                "image_size": dvae.IMAGE_SIZE,
+                "batch_size": dvae.BATCH_SIZE,
+                "dateset_size": dvae.DATASET_SIZE,
+            },
+            f,
+        )
 
     with open(model_path / file_name / "losses.json", "w") as f:
-        json.dump({
-            "mse_losses": dvae._tpar["mse_losses"],
-            "dvae_losses": dvae._tpar["dvae_losses"],
-        }, f)
+        json.dump(
+            {
+                "mse_losses": dvae._tpar["mse_losses"],
+                "dvae_losses": dvae._tpar["dvae_losses"],
+            },
+            f,
+        )
 
     mse_losses, dvae_losses = dvae._tpar["mse_losses"], dvae._tpar["dvae_losses"]
 
@@ -191,8 +202,16 @@ def train(
         State("n-epochs-tune", "value"),
     ],
     running=[
-        (Output("cancel-generation-button", "className"), "", "display-none"),  # Show/hide cancel button.
-        (Output("generate-button", "className"), "display-none", ""),  # Hides run button while running.
+        (
+            Output("cancel-generation-button", "className"),
+            "",
+            "display-none",
+        ),  # Show/hide cancel button.
+        (
+            Output("generate-button", "className"),
+            "display-none",
+            "",
+        ),  # Hides run button while running.
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("results-tab", "label"), "Loading...", "Results"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.

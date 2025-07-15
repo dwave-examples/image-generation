@@ -21,19 +21,13 @@ def push_to_deque(deque, x, deque_size=None, dim=0):
         (slice(None),) * dim
         + (
             slice(
-                (
-                    input_size - deque_size
-                    if input_size < deque_size
-                    else deque.shape[dim]
-                ),
+                (input_size - deque_size if input_size < deque_size else deque.shape[dim]),
                 None,
             ),
         )
         + (slice(None),) * dims_right
     )
-    input_slicing = (
-        (slice(None),) * dim + (slice(-deque_size, None),) + (slice(None),) * dims_right
-    )
+    input_slicing = (slice(None),) * dim + (slice(-deque_size, None),) + (slice(None),) * dims_right
     deque = torch.cat((deque[deque_slicing], x[input_slicing]), dim=dim)
     return deque
 

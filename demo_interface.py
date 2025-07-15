@@ -231,7 +231,7 @@ def generate_settings_form() -> dcc.Tabs:
                     html.Progress(value="0", id="epoch-progress"),
                     html.Label("Batch progress bar"),
                     html.Progress(value="0", id="batch-progress"),
-                    generate_run_buttons("Train", "Cancel Training")
+                    generate_run_buttons("Train", "Cancel Training"),
                 ],
             ),
             dcc.Tab(
@@ -243,7 +243,7 @@ def generate_settings_form() -> dcc.Tabs:
                     generate_generate_tab(),
                     html.Label("Tuning progress bar"),
                     html.Progress(value="0", id="tune-progress"),
-                    generate_run_buttons("Generate", "Cancel Generation")
+                    generate_run_buttons("Generate", "Cancel Generation"),
                 ],
             ),
         ],
@@ -255,7 +255,12 @@ def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
     return html.Div(
         className="button-group",
         children=[
-            html.Button(id=f'{"-".join(run_text.lower().split(" "))}-button', children=run_text, n_clicks=0, disabled=False),
+            html.Button(
+                id=f'{"-".join(run_text.lower().split(" "))}-button',
+                children=run_text,
+                n_clicks=0,
+                disabled=False,
+            ),
             html.Button(
                 id=f'{"-".join(cancel_text.lower().split(" "))}-button',
                 children=cancel_text,
@@ -365,10 +370,13 @@ def create_interface():
                                     html.Div(
                                         className="left-column-layer-2",  # Padding and content wrapper
                                         children=[
-                                            html.Div([
-                                                html.H1(MAIN_HEADER),
-                                                html.P(DESCRIPTION),
-                                            ], className="header-wrapper"),
+                                            html.Div(
+                                                [
+                                                    html.H1(MAIN_HEADER),
+                                                    html.P(DESCRIPTION),
+                                                ],
+                                                className="header-wrapper",
+                                            ),
                                             generate_settings_form(),
                                         ],
                                     )
@@ -452,7 +460,7 @@ def create_interface():
                                                                 ),
                                                                 className="graph",
                                                             ),
-                                                        ]
+                                                        ],
                                                     ),
                                                     # Problem details dropdown
                                                     html.Div([html.Hr(), problem_details(1)]),

@@ -44,9 +44,7 @@ class Decoder(torch.nn.Module):
 
         # We append a last convolutional transpose layer to obtain the final image
         layers.append(
-            torch.nn.ConvTranspose2d(
-                channels[-1], channels[-1], kernel_size=3, stride=1, padding=1
-            )
+            torch.nn.ConvTranspose2d(channels[-1], channels[-1], kernel_size=3, stride=1, padding=1)
         )
         self.convtrans = torch.nn.Sequential(*layers)
 

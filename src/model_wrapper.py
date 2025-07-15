@@ -15,29 +15,25 @@
 
 from pathlib import Path
 from typing import Optional
-import plotly.express as px
-from plotly import graph_objects as go
-from plotly.subplots import make_subplots
-import yaml
-
-from .losses import nll_loss
-
-from .utils.common import get_latent_to_discrete, get_sampler_and_sampler_kwargs
-from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
-from .encoder import Encoder
-from .decoder import Decoder
 
 import numpy as np
+import plotly.express as px
 import torch
+import yaml
+from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
+from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
+from plotly import graph_objects as go
+from plotly.subplots import make_subplots
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Resize, ToTensor
 from torchvision.utils import make_grid
 
-from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
-from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
-
-from .losses import RadialBasisFunction, mmd_loss
+from .decoder import Decoder
+from .encoder import Encoder
+from .losses import RadialBasisFunction, mmd_loss, nll_loss
+from .utils.common import get_latent_to_discrete, get_sampler_and_sampler_kwargs
+from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
 def train_dvae(opt_step: int, epoch: int) -> bool:
@@ -58,7 +54,7 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
         opt_step: The current optimization step.
         epoch: The current epoch.
     """
- 
+
     return epoch < 6 and opt_step % 10 == 0
 
 
@@ -128,9 +124,7 @@ class ModelWrapper:
         # currently assuming config and and model have same base name
         self._dvae.load_state_dict(torch.load(file_path / "dvae.pth"))
         self._grbm.load_state_dict(torch.load(file_path / "grbm.pth"))
-        self._prefactor = torch.load(
-                file_path / "prefactor.pth", weights_only=False
-        )
+        self._prefactor = torch.load(file_path / "prefactor.pth", weights_only=False)
 
     def setup(self) -> None:
         """Initial setup for the VAE and GRBM."""
@@ -142,17 +136,19 @@ class ModelWrapper:
         dvae = DiscreteAutoEncoder(
             encoder=Encoder(n_latents=self.n_latents),
             decoder=Decoder(n_latents=self.n_latents),
-            latent_to_discrete=get_latent_to_discrete(self.LATENT_TO_DISCRETE)
+            latent_to_discrete=get_latent_to_discrete(self.LATENT_TO_DISCRETE),
         )
 
         self._dvae = dvae.to(self._device)
 
-        self.sampler, self.sampler_kwargs, graph, self.linear_range, self.quadratic_range = get_sampler_and_sampler_kwargs(
-            num_reads=self.NUM_READS,
-            annealing_time=self.ANNEALING_TIME,
-            n_latents=self.n_latents,
-            random_seed=self.RANDOM_SEED,
-            use_qpu=self.USE_QPU,
+        self.sampler, self.sampler_kwargs, graph, self.linear_range, self.quadratic_range = (
+            get_sampler_and_sampler_kwargs(
+                num_reads=self.NUM_READS,
+                annealing_time=self.ANNEALING_TIME,
+                n_latents=self.n_latents,
+                random_seed=self.RANDOM_SEED,
+                use_qpu=self.USE_QPU,
+            )
         )
 
         grbm = GraphRestrictedBoltzmannMachine(
@@ -196,18 +192,18 @@ class ModelWrapper:
             transform=transform,
         )
         if dataset_size:
-            dataset = torch.utils.data.random_split(dataset, [dataset_size, len(dataset) - dataset_size])[0]
+            dataset = torch.utils.data.random_split(
+                dataset, [dataset_size, len(dataset) - dataset_size]
+            )[0]
 
-        self._dataloader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, drop_last=True
-        )
+        self._dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     def train_init(
-            self,
-            n_epochs: int,
-            perturb_grbm: bool = False,
-            noise: Optional[float] = None,
-        ) -> None:
+        self,
+        n_epochs: int,
+        perturb_grbm: bool = False,
+        noise: Optional[float] = None,
+    ) -> None:
         """Initialize the model for training.
 
         Args:
@@ -296,8 +292,8 @@ class ModelWrapper:
                 grbm=self._grbm,
                 sampler=self.sampler,
                 sampler_kwargs=self.sampler_kwargs,
-                linear_range = self.linear_range,
-                quadratic_range = self.quadratic_range,
+                linear_range=self.linear_range,
+                quadratic_range=self.quadratic_range,
                 prefactor=self._prefactor,
             )
 
@@ -316,8 +312,8 @@ class ModelWrapper:
                 grbm=self._grbm,
                 sampler=self.sampler,
                 sampler_kwargs=self.sampler_kwargs,
-                linear_range = self.linear_range,
-                quadratic_range = self.quadratic_range,
+                linear_range=self.linear_range,
+                quadratic_range=self.quadratic_range,
                 prefactor=self._prefactor,
                 measure_prefactor=self.MEASURE_PREFACTOR,
                 persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
@@ -326,7 +322,10 @@ class ModelWrapper:
             grbm_loss.backward()
             self._grbm_optimizer.step()
 
-        self._prefactor = self._tpar["alpha"] * self._prefactor + (1 - self._tpar["alpha"]) * self._tpar["last_prefactor"]
+        self._prefactor = (
+            self._tpar["alpha"] * self._prefactor
+            + (1 - self._tpar["alpha"]) * self._tpar["last_prefactor"]
+        )
         self._tpar["last_prefactor"] = self._prefactor
 
         # update learning rate
@@ -338,7 +337,6 @@ class ModelWrapper:
 
         return mse_loss
 
-
     def perturb_grbm_parameters(self, noise: float) -> None:
         """Perturb the GRBM parameters pre model tuning.
 
@@ -349,7 +347,6 @@ class ModelWrapper:
             go.Figure: Plotly figure.
         """
         ...
-
 
     def generate_output(self) -> go.Figure:
         """Generate output images from trained model.
@@ -368,16 +365,10 @@ class ModelWrapper:
                 device=self._device,
                 linear_range=self.linear_range,
                 quadratic_range=self.quadratic_range,
-                sample_params=self.sampler_kwargs
+                sample_params=self.sampler_kwargs,
             )
 
-        images = (
-            self._dvae.decoder(samples.unsqueeze(1))
-            .squeeze(1)
-            .clip(0.0, 1.0)
-            .detach()
-            .cpu()
-        )
+        images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
         generation_tensor_for_plot = make_grid(images, nrow=images_per_row)
 
         fig = px.imshow(generation_tensor_for_plot.permute(1, 2, 0))

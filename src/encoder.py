@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import math
+
 import torch
+
 
 class Encoder(torch.nn.Module):
     def __init__(self, n_latents):
@@ -24,9 +26,7 @@ class Encoder(torch.nn.Module):
         for i in range(len(channels) - 1):
             # A convolutional layer does not modify the image size
             layers.append(
-                torch.nn.Conv2d(
-                    channels[i], channels[i + 1], kernel_size=3, stride=1, padding=1
-                )
+                torch.nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, stride=1, padding=1)
             )
             # Batch normalisation is used to stabilise the learning process
             layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
@@ -57,9 +57,7 @@ class EncoderV2(torch.nn.Module):
 
         for i in range(len(channels) - 1):
             layers.append(
-                torch.nn.Conv2d(
-                    channels[i], channels[i + 1], kernel_size=3, stride=2, padding=1
-                )
+                torch.nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, stride=2, padding=1)
             )
             layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
             layers.append(torch.nn.LeakyReLU())
