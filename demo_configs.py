@@ -29,9 +29,9 @@ MNIST training and image generation using a Discrete Variational
 Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 """
 
-QPU = "Advantage_system4.1"
+QPU = "Advantage2_system3.1"
 
-DEFAULT_MODEL = "model_test_40_no_heaviside"
+DEFAULT_MODEL = "model_test_10_no_heaviside"
 
 #######################################
 # Sliders, buttons and option entries #
