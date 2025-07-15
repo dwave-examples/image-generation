@@ -150,7 +150,7 @@ class ModelWrapper:
 
         self._dvae = dvae.to(self._device)
 
-        self.sampler, graph, h_range, j_range, self.sampler_kwargs = get_sampler_and_sampler_kwargs(
+        self.sampler, self.sampler_kwargs, graph, self.linear_range, self.quadratic_range = get_sampler_and_sampler_kwargs(
             num_reads=self.NUM_READS,
             annealing_time=self.ANNEALING_TIME,
             n_latents=self.n_latents,
@@ -159,10 +159,8 @@ class ModelWrapper:
         )
 
         grbm = GraphRestrictedBoltzmannMachine(
-            self.n_latents,
-            *torch.tensor(list(graph.edges)).mT,
-            h_range=h_range,
-            j_range=j_range,
+            graph.nodes,
+            graph.edges,
         )
         self._grbm = grbm.to(self._device)
 
@@ -301,6 +299,8 @@ class ModelWrapper:
                 grbm=self._grbm,
                 sampler=self.sampler,
                 sampler_kwargs=self.sampler_kwargs,
+                linear_range = self.linear_range,
+                quadratic_range = self.quadratic_range,
                 prefactor=self._prefactor,
             )
 
@@ -319,6 +319,8 @@ class ModelWrapper:
                 grbm=self._grbm,
                 sampler=self.sampler,
                 sampler_kwargs=self.sampler_kwargs,
+                linear_range = self.linear_range,
+                quadratic_range = self.quadratic_range,
                 prefactor=self._prefactor,
                 measure_prefactor=self.MEASURE_PREFACTOR,
                 persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
@@ -363,11 +365,15 @@ class ModelWrapper:
         self._grbm.eval()
 
         with torch.no_grad():
-            self._grbm.h.mul_(self._prefactor)
-            self._grbm.J.mul_(self._prefactor)
-            samples = self._grbm.sample(self.sampler, device=self._device, **self.sampler_kwargs)
-            self._grbm.h.mul_(1 / self._prefactor)
-            self._grbm.J.mul_(1 / self._prefactor)
+            samples = self._grbm.sample(
+                self.sampler,
+                prefactor=self._prefactor,
+                device=self._device,
+                linear_range=self.linear_range,
+                quadratic_range=self.quadratic_range,
+                sample_params=self.sampler_kwargs
+            )
+
         images = (
             self._dvae.decoder(samples.unsqueeze(1))
             .squeeze(1)

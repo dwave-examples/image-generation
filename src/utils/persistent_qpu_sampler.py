@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import torch
 from dimod import BinaryQuadraticModel, Sampler, SampleSet, as_samples
 from dwave.system.temperatures import maximum_pseudolikelihood_temperature
 
-from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
-from dwave.plugins.torch.utils import sampleset_to_tensor
+if TYPE_CHECKING:
+    from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 
 
 def push_to_deque(deque, x, deque_size=None, dim=0):
@@ -34,51 +38,48 @@ def push_to_deque(deque, x, deque_size=None, dim=0):
     return deque
 
 
-def sample_from_grbm(
-    grbm: GraphRestrictedBoltzmannMachine,
-    sampler: Sampler,
-    sampler_kwargs: dict,
+def _find_prefactor(
     prefactor: float,
-) -> SampleSet:
-    with torch.no_grad():
-        grbm.h.mul_(prefactor)
-        grbm.J.mul_(prefactor)
-        h, J = grbm.ising
-        sample_set = sampler.sample_ising(h, J, **sampler_kwargs)
-        grbm.h.mul_(1 / prefactor)
-        grbm.J.mul_(1 / prefactor)
-    return sample_set
-
-
-def find_prefactor(
-    previous_prefactor: float,
     grbm: GraphRestrictedBoltzmannMachine,
     sampler: Sampler,
     sampler_kwargs: dict,
+    linear_range,
+    quadratic_range,
     atol: float = 0.05,
     measure_prefactor: bool = True,
     sample_set: SampleSet | None = None,
 ) -> tuple[float, SampleSet]:
     if sample_set is None:
-        sample_set = sample_from_grbm(grbm, sampler, sampler_kwargs, previous_prefactor)
-    h, J = grbm.ising
+        with torch.no_grad():
+            sample_set = grbm.sample(
+                sampler,
+                prefactor=prefactor,
+                linear_range=linear_range,
+                quadratic_range=quadratic_range,
+                sample_params=sampler_kwargs,
+                as_tensor=False,
+            )
 
     if measure_prefactor:
-        bqm = BinaryQuadraticModel.from_ising(h, J)
-        temperature, _ = maximum_pseudolikelihood_temperature(
-            bqm, sample_set, T_guess=1.0
-        )
+        bqm = BinaryQuadraticModel.from_ising(*grbm.to_ising(1.0, linear_range, quadratic_range))
+        temperature, _ = maximum_pseudolikelihood_temperature(bqm, sample_set, T_guess=1.0)
         beta = 1 / temperature
     else:
         temperature = 1
         beta = 1
 
     if beta < 1 - atol or beta > 1 + atol:
-        return find_prefactor(
-            temperature * previous_prefactor, grbm, sampler, sampler_kwargs, atol
+        return _find_prefactor(
+            temperature * prefactor,
+            grbm,
+            sampler,
+            sampler_kwargs,
+            linear_range,
+            quadratic_range,
+            atol,
         )
-    else:
-        return temperature * previous_prefactor, sample_set
+
+    return temperature * prefactor, sample_set
 
 
 class PersistentQPUSampleHelper:
@@ -95,6 +96,8 @@ class PersistentQPUSampleHelper:
         grbm: GraphRestrictedBoltzmannMachine,
         sampler: Sampler,
         sampler_kwargs: dict,
+        linear_range: tuple[float, float],
+        quadratic_range: tuple[float, float],
         atol: float = 0.05,
         measure_prefactor: bool = True,
         resample: bool = False,
@@ -104,27 +107,17 @@ class PersistentQPUSampleHelper:
             self.current_deque_size = 0
             self.iterations_since_last_resampling = 0
             self.deque = None
-            return self.find_prefactor(
-                previous_prefactor,
-                grbm,
-                sampler,
-                sampler_kwargs,
-                atol,
-                measure_prefactor,
-                resample,
-                reset_deque=False,
-            )
+
         resampling_condition = (
             self.current_deque_size < self.max_deque_size
-            or self.iterations_since_last_resampling
-            >= self.iterations_before_resampling
+            or self.iterations_since_last_resampling >= self.iterations_before_resampling
             or resample
         )
-        num_reads = sampler_kwargs["num_reads"]
         if resampling_condition:
             sample_set = None
         else:
             assert isinstance(self.deque, torch.Tensor)
+            num_reads = sampler_kwargs["num_reads"]
             idx = torch.randint(0, self.max_deque_size, size=(num_reads,))
             tensor = self.deque[idx]
             sample_set = SampleSet.from_samples(
@@ -133,19 +126,22 @@ class PersistentQPUSampleHelper:
                 energy=self.sample_set_energy,
             )
 
-        prefactor, sample_set = find_prefactor(
-            previous_prefactor=previous_prefactor,
+        prefactor, sample_set = _find_prefactor(
+            prefactor=previous_prefactor,
             grbm=grbm,
             sampler=sampler,
             sampler_kwargs=sampler_kwargs,
+            linear_range=linear_range,
+            quadratic_range=quadratic_range,
             atol=atol,
             measure_prefactor=measure_prefactor,
             sample_set=sample_set,
         )
         self.sample_set_vartype = sample_set.vartype
         self.sample_set_energy = sample_set.record.energy
+
         if resampling_condition:
-            tensor = sampleset_to_tensor(sample_set)
+            tensor = grbm.sampleset_to_tensor(sample_set)
             if self.deque is None:
                 self.deque = tensor
             else:
@@ -158,4 +154,5 @@ class PersistentQPUSampleHelper:
             self.iterations_since_last_resampling = 0
         else:
             self.iterations_since_last_resampling += 1
+
         return prefactor, sample_set

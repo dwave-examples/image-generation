@@ -11,12 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import torch
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 from dimod import Sampler, SampleSet
-from dwave.plugins.torch.utils import sampleset_to_tensor
 
-from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
+if TYPE_CHECKING:
+    from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
 class RadialBasisFunction(torch.nn.Module):
@@ -58,19 +62,21 @@ def mmd_loss(
     grbm: GraphRestrictedBoltzmannMachine,
     sampler: Sampler,
     sampler_kwargs: dict,
+    linear_range: tuple[float, float],
+    quadratic_range: tuple[float, float],
     prefactor: float,
 ):
     with torch.no_grad():
-        grbm.h.mul_(prefactor)
-        grbm.J.mul_(prefactor)
-        h, J = grbm.ising
-        sample_set = sampler.sample_ising(h, J, **sampler_kwargs)
-        grbm.h.mul_(1 / prefactor)
-        grbm.J.mul_(1 / prefactor)
-        h, J = grbm.ising
-
-    samples = sampleset_to_tensor(sample_set).to(spins.device)
+        samples = grbm.sample(
+            sampler,
+            prefactor=prefactor,
+            device=spins.device,
+            linear_range=linear_range,
+            quadratic_range=quadratic_range,
+            sample_params=sampler_kwargs
+        )
     spins = spins.reshape(-1, spins.shape[-1])
+
     kernel_matrix = kernel(torch.vstack((spins, samples)))
     num_spin_strings = spins.shape[0]
     spin_spin_kernels = kernel_matrix[:num_spin_strings, :num_spin_strings]
@@ -89,6 +95,8 @@ def nll_loss(
     grbm: GraphRestrictedBoltzmannMachine,
     sampler: Sampler,
     sampler_kwargs: dict,
+    linear_range: tuple[float, float],
+    quadratic_range: tuple[float, float],
     prefactor: float,
     measure_prefactor: bool,
     persistent_qpu_sample_helper: PersistentQPUSampleHelper,
@@ -99,11 +107,13 @@ def nll_loss(
         grbm,
         sampler,
         sampler_kwargs,
+        linear_range,
+        quadratic_range,
         measure_prefactor=measure_prefactor,
         resample=False,
         reset_deque=True,
     )
-    samples = sampleset_to_tensor(sample_set).to(spins.device)
+    samples = grbm.sampleset_to_tensor(sample_set, device=spins.device)
     spins = spins.reshape(-1, spins.shape[-1])
     nll = torch.mean(grbm(spins)) - torch.mean(grbm(samples))
     return prefactor, nll, sample_set

@@ -78,7 +78,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
     )
     if use_qpu:
         sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
-        h_range, j_range = qpu.properties["h_range"], qpu.properties["j_range"]
+        linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
         sampler_kwargs = dict(
             num_reads=num_reads,
             # Set `answer_mode` to "raw" so no samples are aggregated
@@ -94,7 +94,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
         from dwave.samplers import SimulatedAnnealingSampler
 
         sampler = SimulatedAnnealingSampler()
-        h_range = j_range = None
+        linear_range, quadratic_range = None, None
         sampler_kwargs = dict(
             num_reads=num_reads,
             beta_range=[1, 1],
@@ -102,7 +102,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
             randomize_order=True,
             num_sweeps=100,
         )
-    return sampler, graph, h_range, j_range, sampler_kwargs
+    return sampler, sampler_kwargs, graph, linear_range, quadratic_range
 
 
 def get_latent_to_discrete(
