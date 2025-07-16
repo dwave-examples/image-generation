@@ -24,7 +24,7 @@ from dash import MATCH
 from dash.dependencies import Input, Output, State
 from plotly import graph_objects as go
 
-from demo_interface import generate_options, generate_problem_details_table_rows
+from demo_interface import generate_options
 from src.model_wrapper import ModelWrapper
 
 
@@ -107,7 +107,9 @@ def render_initial_state(fig: go.Figure) -> str:
             "",
         ),  # Hides run button while running.
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
-        (Output("results-tab", "label"), "Loading...", "Results"),
+        (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("results-tab", "label"), "Loading...", "Generated Images"),
+        (Output("loss-tab", "label"), "Loading...", "Loss"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
         (Output("batch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
         (Output("epoch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
@@ -227,7 +229,9 @@ def train(
             "",
         ),  # Hides run button while running.
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
-        (Output("results-tab", "label"), "Loading...", "Results"),
+        (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("results-tab", "label"), "Loading...", "Generated Images"),
+        (Output("loss-tab", "label"), "Loading...", "Loss"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
         (Output("tune-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],

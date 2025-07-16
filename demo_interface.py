@@ -406,7 +406,7 @@ def create_interface():
                                         ],
                                     ),
                                     dcc.Tab(
-                                        label="Results",
+                                        label="Generated Images",
                                         id="results-tab",
                                         className="tab",
                                         disabled=True,
@@ -414,9 +414,8 @@ def create_interface():
                                             html.Div(
                                                 className="tab-content-results",
                                                 children=[
-                                                    # TODO: display results in a nicer way
                                                     html.Div(
-                                                        className="graph-wrapper",
+                                                        className="graph-wrapper-flex",
                                                         children=[
                                                             html.Div(
                                                                 dcc.Graph(
@@ -424,17 +423,6 @@ def create_interface():
                                                                     responsive=True,
                                                                     config={
                                                                         "displayModeBar": False,
-                                                                        # "autosizable": True,
-                                                                    },
-                                                                ),
-                                                                className="graph",
-                                                            ),
-                                                            html.Div(
-                                                                dcc.Graph(
-                                                                    id="fig-loss",
-                                                                    responsive=True,
-                                                                    config={
-                                                                        "displayModeBar": False
                                                                     },
                                                                 ),
                                                                 className="graph",
@@ -451,8 +439,34 @@ def create_interface():
                                                             ),
                                                         ],
                                                     ),
-                                                    # Problem details dropdown
-                                                    html.Div([html.Hr(), problem_details(1)]),
+                                                ],
+                                            )
+                                        ],
+                                    ),
+                                    dcc.Tab(
+                                        label="Loss",
+                                        id="loss-tab",
+                                        className="tab",
+                                        disabled=True,
+                                        children=[
+                                            html.Div(
+                                                className="tab-content-results",
+                                                children=[
+                                                    html.Div(
+                                                        className="graph-wrapper",
+                                                        children=[
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                        ],
+                                                    ),
                                                 ],
                                             )
                                         ],

@@ -60,6 +60,7 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
 
 class TrainingError(Exception):
     """Error when training the model."""
+    ###TODO
 
 
 class ModelWrapper:
@@ -346,6 +347,7 @@ class ModelWrapper:
         Returns:
             go.Figure: Plotly figure.
         """
+        ###TODO
         ...
 
     def generate_output(self) -> go.Figure:
@@ -375,6 +377,9 @@ class ModelWrapper:
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
+        fig.update_layout(
+            margin={'t':0,'l':0,'b':0,'r':0}
+        )
         return fig
 
     def generate_loss_plot(self, mse_losses, dvae_losses) -> go.Figure:
@@ -430,6 +435,10 @@ class ModelWrapper:
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
+        fig.update_layout(
+            margin={'t':0,'l':0,'b':0,'r':0}
+        )
+
         return fig
 
     def generate_training_data(self) -> go.Figure:
