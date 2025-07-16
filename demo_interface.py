@@ -182,17 +182,20 @@ def generate_generate_tab() -> html.Div:
                 generate_options(["Tune Parameters"]),
                 [],
             ),
-            slider(
-                "Epochs",
-                "n-epochs-tune",
-                SLIDER_EPOCHS,
-            ),
-            html.Label("Noise (optional)"),
-            dcc.Input(
-                id="noise",
-                type="number",
-                **NOISE,
-            ),
+            html.Div([
+                slider(
+                    "Epochs",
+                    "n-epochs-tune",
+                    SLIDER_EPOCHS,
+                ),
+                html.Label("Noise (optional)", className="display-none"),
+                dcc.Input(
+                    id="noise",
+                    type="number",
+                    className="display-none",
+                    **NOISE,
+                ),
+            ], id="tune-parameter-settings")
         ],
     )
 
@@ -216,10 +219,12 @@ def generate_settings_form() -> dcc.Tabs:
                     # TODO: make progress bars look nicer
                     # and decide on 1 (as for tuning) vs. 2 bars
                     generate_train_tab(),
-                    html.Label("Epochs progress bar"),
-                    html.Progress(value="0", id="epoch-progress"),
-                    html.Label("Batch progress bar"),
-                    html.Progress(value="0", id="batch-progress"),
+                    html.Div([
+                        html.Label("Epochs progress bar"),
+                        html.Progress(value="0", id="epoch-progress"),
+                        html.Label("Batch progress bar"),
+                        html.Progress(value="0", id="batch-progress"),
+                    ]),
                     generate_run_buttons("Train", "Cancel Training"),
                 ],
             ),
@@ -230,8 +235,10 @@ def generate_settings_form() -> dcc.Tabs:
                 className="tab",
                 children=[
                     generate_generate_tab(),
-                    html.Label("Tuning progress bar"),
-                    html.Progress(value="0", id="tune-progress"),
+                    html.Div([
+                        html.Label("Tuning progress bar"),
+                        html.Progress(value="0", id="tune-progress"),
+                    ]),
                     generate_run_buttons("Generate", "Cancel Generation"),
                 ],
             ),

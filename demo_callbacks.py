@@ -56,6 +56,25 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
 
 
 @dash.callback(
+    Output("tune-parameter-settings", "className"),
+    Input("tune-params", "value"),
+)
+def toggle_tuning_params(tune_params: list[int]) -> str:
+    """Show/hide tune parameter settings when Tune Parameters box is toggled.
+
+    Args:
+        tune_params: The value of the Tune Paraters checkbox as a list.
+
+    Returns:
+        tune-parameter-settings-classname: The class name to show/hide the tune parameter settings.
+    """
+    if len(tune_params):
+        return ""
+
+    return "display-none"
+
+
+@dash.callback(
     Output("model-file-name", "options"),
     Output("model-file-name", "value"),
     Input("fig-output", "figure"),
@@ -208,7 +227,6 @@ def train(
     Output("fig-output", "figure"),
     Output("fig-loss", "figure"),
     Output("fig-reconstructed", "figure"),
-    # Output("problem-details", "children", allow_duplicate=True),
     background=True,
     inputs=[
         Input("generate-button", "n_clicks"),

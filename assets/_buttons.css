@@ -36,10 +36,10 @@ button:hover {
     width: 100%;
 }
 
-.button-group:last-child {
+.button-group button:last-child {
     background-color: var(--red-light);
 }
 
-.button-group:last-child:hover {
+.button-group button:last-child:hover {
     background-color: var(--red-dark);
 }
