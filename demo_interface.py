@@ -16,17 +16,28 @@
 from __future__ import annotations
 
 from dash import dcc, html
+from plotly import graph_objects as go
 
 from demo_configs import (
-    DEFAULT_MODEL,
     DESCRIPTION,
     MAIN_HEADER,
     NOISE,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
-    THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
+from src.model_wrapper import display_dataset, get_dataset
+
+def display_input_data() -> go.Figure:
+    """Load data from MNIST and display in input tab.
+
+    Returns:
+        fig: a figure of MNIST data.
+    """
+    dataset = get_dataset(32, 32*22)
+    fig = display_dataset(dataset, 32)
+
+    return fig
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -398,19 +409,23 @@ def create_interface():
                                 mobile_breakpoint=0,
                                 children=[
                                     dcc.Tab(
-                                        label="Data",
+                                        label="MNIST Training Data",
                                         id="input-tab",
                                         value="input-tab",  # used for switching tabs programatically
                                         className="tab",
                                         children=[
-                                            dcc.Loading(
-                                                parent_className="input",
-                                                type="circle",
-                                                color=THEME_COLOR_SECONDARY,
-                                                # A Dash callback (in app.py) will generate content in the Div below
-                                                children=html.Div(id="input"),
+                                            html.Div(
+                                                dcc.Graph(
+                                                    figure=display_input_data(),
+                                                    id="fig-input",
+                                                    responsive=True,
+                                                    config={
+                                                        "displayModeBar": False,
+                                                    },
+                                                ),
+                                                className="graph",
                                             ),
-                                        ],
+                                        ]
                                     ),
                                     dcc.Tab(
                                         label="Generated Images",
@@ -425,24 +440,34 @@ def create_interface():
                                                         className="graph-wrapper-flex",
                                                         children=[
                                                             html.Div(
-                                                                dcc.Graph(
-                                                                    id="fig-output",
-                                                                    responsive=True,
-                                                                    config={
-                                                                        "displayModeBar": False,
-                                                                    },
-                                                                ),
-                                                                className="graph",
+                                                                [
+                                                                    html.H3("Generated Images"),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-output",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False,
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    )
+                                                                ],
                                                             ),
                                                             html.Div(
-                                                                dcc.Graph(
-                                                                    id="fig-reconstructed",
-                                                                    responsive=True,
-                                                                    config={
-                                                                        "displayModeBar": False
-                                                                    },
-                                                                ),
-                                                                className="graph",
+                                                                [
+                                                                    html.H3("Reconstructed Images Comparison"),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-reconstructed",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    )
+                                                                ],
                                                             ),
                                                         ],
                                                     ),
@@ -451,7 +476,7 @@ def create_interface():
                                         ],
                                     ),
                                     dcc.Tab(
-                                        label="Loss",
+                                        label="Loss Graphs",
                                         id="loss-tab",
                                         className="tab",
                                         disabled=True,

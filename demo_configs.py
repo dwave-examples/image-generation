@@ -31,8 +31,6 @@ Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 
 QPU = "Advantage2_system3.1"
 
-DEFAULT_MODEL = "model_test_10_no_heaviside"
-
 #######################################
 # Sliders, buttons and option entries #
 #######################################
@@ -46,7 +44,7 @@ SLIDER_LATENTS = {
 
 SLIDER_EPOCHS = {
     "min": 1,
-    "max": 80,
+    "max": 60,
     "step": 1,
     "value": 10,
 }

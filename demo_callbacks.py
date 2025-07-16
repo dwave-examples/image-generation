@@ -80,7 +80,7 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
     Input("fig-output", "figure"),
 )
 ###TODO make trigger when training finishes
-def render_initial_state(fig: go.Figure) -> str:
+def initialize_training_model_dropdown(fig: go.Figure) -> str:
     """TODO
 
     Args:
@@ -106,7 +106,9 @@ def render_initial_state(fig: go.Figure) -> str:
 
 
 @dash.callback(
-    Output("problem-details", "children"),
+    Output("fig-output", "figure", allow_duplicate=True),
+    Output("fig-loss", "figure", allow_duplicate=True),
+    Output("fig-reconstructed", "figure", allow_duplicate=True),
     background=True,
     inputs=[
         Input("train-button", "n_clicks"),
@@ -115,20 +117,12 @@ def render_initial_state(fig: go.Figure) -> str:
         State("file-name", "value"),
     ],
     running=[
-        (
-            Output("cancel-training-button", "className"),
-            "",
-            "display-none",
-        ),  # Show/hide cancel button.
-        (
-            Output("train-button", "className"),
-            "display-none",
-            "",
-        ),  # Hides run button while running.
+        (Output("cancel-training-button", "className"), "", "display-none"),
+        (Output("train-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
-        (Output("loss-tab", "label"), "Loading...", "Loss"),
+        (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
         (Output("batch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
         (Output("epoch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
@@ -236,20 +230,12 @@ def train(
         State("n-epochs-tune", "value"),
     ],
     running=[
-        (
-            Output("cancel-generation-button", "className"),
-            "",
-            "display-none",
-        ),  # Show/hide cancel button.
-        (
-            Output("generate-button", "className"),
-            "display-none",
-            "",
-        ),  # Hides run button while running.
+        (Output("cancel-generation-button", "className"), "", "display-none"),
+        (Output("generate-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
-        (Output("loss-tab", "label"), "Loading...", "Loss"),
+        (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
         (Output("tune-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],

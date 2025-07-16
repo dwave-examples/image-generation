@@ -58,6 +58,43 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
     return epoch < 6 and opt_step % 10 == 0
 
 
+def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = None):
+    transform = Compose(
+        [
+            Resize((image_size, image_size)),
+            ToTensor(),
+            lambda x: torch.round(x),  # Round values to 0 or 1
+        ]
+    )
+
+    # Load the dataset and create the dataloader
+    dataset = MNIST(
+        root="data",
+        train=True,
+        download=True,
+        transform=transform,
+    )
+    if dataset_size:
+        dataset = torch.utils.data.random_split(
+            dataset, [dataset_size, len(dataset) - dataset_size]
+        )[0]
+
+    return DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+
+
+def display_dataset(dataset, num_rows):
+    batch = next(iter(dataset))[0]
+    reconstruction_tensor_for_plot = make_grid(batch.cpu(), nrow=num_rows)
+    fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
+
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)
+    fig.update_layout(
+        margin={'t':0,'l':0,'b':0,'r':0}
+    )
+    return fig
+
+
 class TrainingError(Exception):
     """Error when training the model."""
     ###TODO
@@ -177,27 +214,7 @@ class ModelWrapper:
             dataset_size: The number of images to use for training.
                 Default (``None``) uses all available images.
         """
-        transform = Compose(
-            [
-                Resize((self.IMAGE_SIZE, self.IMAGE_SIZE)),
-                ToTensor(),
-                lambda x: torch.round(x),  # Round values to 0 or 1
-            ]
-        )
-
-        # Load the dataset and create the dataloader
-        dataset = MNIST(
-            root="data",
-            train=True,
-            download=True,
-            transform=transform,
-        )
-        if dataset_size:
-            dataset = torch.utils.data.random_split(
-                dataset, [dataset_size, len(dataset) - dataset_size]
-            )[0]
-
-        self._dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+        self._dataloader = get_dataset(self.IMAGE_SIZE, batch_size, dataset_size)
 
     def train_init(
         self,
@@ -392,7 +409,7 @@ class ModelWrapper:
         Returns:
             go.Figure: Plotly figure.
         """
-        fig = make_subplots(rows=2, cols=1, subplot_titles=("MSE Loss", "Other Loss"))
+        fig = make_subplots(rows=2, cols=1, subplot_titles=("Mean Squared Error Loss (MSE)", "Other Loss"))
 
         fig.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=mse_losses), row=1, col=1)
         fig.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses), row=2, col=1)
