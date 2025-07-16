@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from dash import MATCH
 from dash.dependencies import Input, Output, State
 from plotly import graph_objects as go
 
-from demo_interface import generate_problem_details_table_rows
+from demo_interface import generate_options, generate_problem_details_table_rows
 from src.model_wrapper import ModelWrapper
 
 
@@ -55,21 +56,34 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
 
 
 @dash.callback(
-    Output("filename", "children"),
-    Input("input-file", "filename"),
-    prevent_initial_call=True,
+    Output("model-file-name", "options"),
+    Output("model-file-name", "value"),
+    Input("fig-output", "figure"),
 )
-def read_input_file(filename: str) -> str:
-    """Display filename when file is selected.
+###TODO make trigger when training finishes
+def render_initial_state(fig: go.Figure) -> str:
+    """TODO
 
     Args:
-        filename: The name of the uploaded file.
+        TODO
 
     Returns:
-        filename: The name of the file that was uploaded to display in the UI.
+        TODO
     """
+    models = []
+    project_directory = os.path.dirname(os.path.realpath(__file__))
 
-    return filename
+    models_dir = os.path.join(project_directory, "models")
+    directories = os.fsencode(models_dir)
+
+    for dir in os.listdir(directories):
+        directory = os.fsdecode(dir)
+        models.append(directory)
+
+    if not len(models):
+        models = generate_options(["No Models Found (please train and save a model)"])
+
+    return models, models[0]
 
 
 @dash.callback(

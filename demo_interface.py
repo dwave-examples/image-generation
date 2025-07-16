@@ -175,34 +175,23 @@ def generate_generate_tab() -> html.Div:
     return html.Div(
         className="settings",
         children=[
-            html.Div(
-                [
-                    html.Label("VAE Training File"),
-                    # TODO: maybe a drop down list is better
-                    dcc.Input(
-                        id="model-file-name",
-                        type="text",
-                        value=DEFAULT_MODEL,
-                    ),
-                ],
-                id="uploaded-settings",
-            ),
+            dropdown("Trained Model", "model-file-name", generate_options(["No Models Found (please train and save a model)"])),
             checklist(
                 "",
                 "tune-params",
                 generate_options(["Tune Parameters"]),
                 [],
             ),
+            slider(
+                "Epochs",
+                "n-epochs-tune",
+                SLIDER_EPOCHS,
+            ),
             html.Label("Noise (optional)"),
             dcc.Input(
                 id="noise",
                 type="number",
                 **NOISE,
-            ),
-            slider(
-                "Epochs",
-                "n-epochs-tune",
-                SLIDER_EPOCHS,
             ),
         ],
     )
