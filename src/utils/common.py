@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import random
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
 
 import networkx as nx
 import torch
@@ -89,8 +89,7 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
             num_reads=num_reads,
             # Set `answer_mode` to "raw" so no samples are aggregated
             answer_mode="raw",
-            # Set `auto_scale`` to `False` so the sampler sample from the intended
-            # distribution
+            # Set `auto_scale`` to `False` so the sampler sample from the intended distribution
             auto_scale=False,
             annealing_time=annealing_time,
             label="Examples - DVAE",
@@ -113,27 +112,28 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
 
 
 def get_latent_to_discrete(
-    mode: Literal["heaviside"] | None,
+    mode: Optional[Literal["heaviside"]],
 ) -> Callable[[torch.Tensor, int], torch.Tensor] | None:
     """TODO"""
-    if mode == "heaviside":
-
-        def latent_to_discrete(logits: torch.Tensor, n_samples: int) -> torch.Tensor:
-            # logits is of shape (batch_size, n_discrete)
-            # we ignore n_samples as we won't be doing any stochastic processes
-            with torch.no_grad():
-                hard = (
-                    torch.heaviside(
-                        logits,
-                        values=torch.tensor(0, device=logits.device, dtype=logits.dtype),
-                    )
-                    * 2
-                    - 1
-                )
-            # output
-            return (hard - logits.detach() + logits).unsqueeze(1)
-
-    elif mode is None:
+    if mode is None:
         return None
+
+    if mode != "heaviside":
+        raise ValueError("Invalid Mode: Mode is not heaviside.")
+
+    def latent_to_discrete(logits: torch.Tensor, n_samples: int) -> torch.Tensor:
+        # logits is of shape (batch_size, n_discrete)
+        # we ignore n_samples as we won't be doing any stochastic processes
+        with torch.no_grad():
+            hard = (
+                torch.heaviside(
+                    logits,
+                    values=torch.tensor(0, device=logits.device, dtype=logits.dtype),
+                )
+                * 2
+                - 1
+            )
+
+        return (hard - logits.detach() + logits).unsqueeze(1)
 
     return latent_to_discrete

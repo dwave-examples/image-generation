@@ -63,7 +63,7 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
     """Show/hide tune parameter settings when Tune Parameters box is toggled.
 
     Args:
-        tune_params: The value of the Tune Paraters checkbox as a list.
+        tune_params: The value of the Tune Parameters checkbox as a list.
 
     Returns:
         tune-parameter-settings-classname: The class name to show/hide the tune parameter settings.
@@ -80,14 +80,15 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
     Input("fig-output", "figure"),
 )
 ###TODO make trigger when training finishes
-def initialize_training_model_dropdown(fig: go.Figure) -> str:
-    """TODO
+def initialize_training_model_dropdown(fig: go.Figure) -> tuple[list[str], str]:
+    """Initializes the Trained Models dropdown options based on model files available.
 
     Args:
         TODO
 
     Returns:
-        TODO
+        model-file-name-options: The options for the Trained Model dropdown selection.
+        model-file-name-value: The value of the dropdown.
     """
     models = []
     project_directory = os.path.dirname(os.path.realpath(__file__))
