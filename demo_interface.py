@@ -231,12 +231,15 @@ def generate_settings_form() -> dcc.Tabs:
                     # and decide on 1 (as for tuning) vs. 2 bars
                     generate_train_tab(),
                     html.Div([
-                        html.Label("Epochs progress bar"),
-                        html.Progress(value="0", id="epoch-progress"),
-                        html.Label("Batch progress bar"),
-                        html.Progress(value="0", id="batch-progress"),
+                        generate_run_buttons("Train", "Cancel Training"),
+                        html.Div([
+                            html.Progress(value="0", id={"type": "progress", "index": 0}),
+                            html.Div([
+                                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": 0}),
+                                html.P("Batch:", id={"type": "progress-caption-batch", "index": 0}),
+                            ], className="display-flex")
+                        ], id={"type": "progress-wrapper", "index": 0}, className="visibility-hidden")
                     ]),
-                    generate_run_buttons("Train", "Cancel Training"),
                 ],
             ),
             dcc.Tab(
@@ -247,10 +250,15 @@ def generate_settings_form() -> dcc.Tabs:
                 children=[
                     generate_generate_tab(),
                     html.Div([
-                        html.Label("Tuning progress bar"),
-                        html.Progress(value="0", id="tune-progress"),
+                        generate_run_buttons("Generate", "Cancel Generation"),
+                        html.Div([
+                            html.Progress(value="0", id={"type": "progress", "index": 1}),
+                            html.Div([
+                                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": 1}),
+                                html.P("Batch:", id={"type": "progress-caption-batch", "index": 1}),
+                            ], className="display-flex")
+                        ], id={"type": "progress-wrapper", "index": 1}, className="visibility-hidden")
                     ]),
-                    generate_run_buttons("Generate", "Cancel Generation"),
                 ],
             ),
         ],
@@ -359,7 +367,7 @@ def create_interface():
         id="app-container",
         children=[
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
-            dcc.Store(id="run-in-progress", data=False),  # Indicates whether run is in progress
+            dcc.Store(id="batch-size"),
             # Header brand banner
             html.Div(className="banner", children=[html.Img(src=THUMBNAIL)]),
             # Settings and results columns

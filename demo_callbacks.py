@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
+import yaml
 from pathlib import Path
 
 import dash
@@ -77,6 +79,7 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
 @dash.callback(
     Output("model-file-name", "options"),
     Output("model-file-name", "value"),
+    Output("batch-size", "data"),
     Input("fig-output", "figure"),
 )
 ###TODO make trigger when training finishes
@@ -103,7 +106,40 @@ def initialize_training_model_dropdown(fig: go.Figure) -> tuple[list[str], str]:
     if not len(models):
         models = generate_options(["No Models Found (please train and save a model)"])
 
-    return models, models[0]
+    with open("src/training_parameters.yaml", "r") as f:
+        parameters = yaml.safe_load(f)
+
+    return models, models[0], parameters["BATCH_SIZE"]
+
+
+@dash.callback(
+    Output({"type": "progress-caption-epoch", "index": MATCH}, "children"),
+    Output({"type": "progress-caption-batch", "index": MATCH}, "children"),
+    Output({"type": "progress-wrapper", "index": MATCH}, "className"),
+    inputs=[
+        Input({"type": "progress", "index": MATCH}, "value"),
+        State({"type": "progress", "index": MATCH}, "max"),
+        State("n-epochs-tune", "value"),
+        State("batch-size", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_progress(
+    progress_value: str,
+    progress_max: str,
+    n_epochs: int,
+    batch_size: int
+) -> tuple[str, str]:
+    progress_value = int(progress_value) if progress_value else 0
+    progress_max = int(progress_max) if progress_max else 0
+
+    curr_epoch = math.floor(progress_value/(n_epochs*batch_size))
+
+    return (
+        f"Epochs Completed: {curr_epoch}/{n_epochs}",
+        f"Batch: {progress_value%(n_epochs*batch_size)}/{math.floor(progress_max/n_epochs)}",
+        ""
+    )
 
 
 @dash.callback(
@@ -125,15 +161,11 @@ def initialize_training_model_dropdown(fig: go.Figure) -> tuple[list[str], str]:
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
-        (Output("batch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
-        (Output("epoch-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
     progress=[
-        Output("batch-progress", "value"),
-        Output("batch-progress", "max"),
-        Output("epoch-progress", "value"),
-        Output("epoch-progress", "max"),
+        Output({"type": "progress", "index": 0}, "value"),
+        Output({"type": "progress", "index": 0}, "max"),
     ],
     prevent_initial_call=True,
 )
@@ -172,7 +204,7 @@ def train(
 
         total = len(dvae._dataloader)
         for i, batch in enumerate(dvae._dataloader):
-            set_progress((str(i), str(total), str(epoch), str(n_epochs)))
+            set_progress((str(total * epoch + i), str(total * n_epochs)))
             mse_loss = dvae.step(batch, epoch)
 
         print(
@@ -238,11 +270,10 @@ def train(
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
-        (Output("tune-progress", "style"), {"visibility": "visible"}, {"visibility": "hidden"}),
     ],
     progress=[
-        Output("tune-progress", "value"),
-        Output("tune-progress", "max"),
+        Output({"type": "progress", "index": 1}, "value"),
+        Output({"type": "progress", "index": 1}, "max"),
     ],
     cancel=[Input("cancel-generation-button", "n_clicks")],
     prevent_initial_call=True,

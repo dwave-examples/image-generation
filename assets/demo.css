@@ -83,7 +83,12 @@ div.left-column .tab {
 }
 
 #setting-tabs-parent .tab-content {
-    padding-top: 0;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
+
+.button-group {
+    margin-bottom: 2rem;
 }
 
 .graph-wrapper-flex {
@@ -95,4 +100,22 @@ div.left-column .tab {
 
 .graph-wrapper-flex .graph {
     width: calc(45vw - var(--left-col-width)/2);
+}
+
+progress {
+    height: 2rem;
+    width: 100%;
+}
+
+progress::-webkit-progress-bar {
+    background-color: var(--theme);
+}
+
+.display-flex {
+    display: flex;
+    justify-content: space-between;
+}
+
+.visibility-hidden {
+    visibility: hidden;
 }

@@ -22,10 +22,10 @@ THEME_COLOR_SECONDARY = "#2A7DE1"  # D-Wave blue default #2A7DE1
 
 THUMBNAIL = "static/dwave_logo.svg"
 
-APP_TITLE = "Discrete Variational Autoencoder"
-MAIN_HEADER = "Discrete Variational Autoencoder"
+APP_TITLE = "ML Image Generation (MNIST)"
+MAIN_HEADER = "ML Image Generation (MNIST)"
 DESCRIPTION = """\
-MNIST training and image generation using a Discrete Variational
+Machine Learning MNIST training and image generation using a Discrete Variational
 Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 """
 
