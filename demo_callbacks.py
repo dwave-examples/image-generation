@@ -24,10 +24,13 @@ from pathlib import Path
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
+from dwave.cloud import Client
 from plotly import graph_objects as go
 
 from demo_interface import generate_options
 from src.model_wrapper import ModelWrapper
+
+MODEL_PATH = Path("models")
 
 
 @dash.callback(
@@ -55,6 +58,54 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
         classes.remove("collapsed")
         return " ".join(classes)
     return to_collapse_class + " collapsed" if to_collapse_class else "collapsed"
+
+
+@dash.callback(
+    Output("popup", "className", allow_duplicate=True),
+    Input("popup-toggle", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_popup(popup_toggle: list[int]) -> str:
+    """Hide popup when close button is clicked.
+
+    Args:
+        popup_toggle: The close button for the popup toggle
+
+    Returns:
+        popup-classname: The class name to hide the popup.
+    """
+    return "display-none"
+
+
+@dash.callback(
+    Output("popup", "className"),
+    Output("generate-button", "disabled"),
+    Input("model-file-name", "value"),
+)
+def check_qpu_availability(training_file_name: str) -> str:
+    """Checks whether user has access to QPU associated with model when model changes.
+
+    Args:
+        model: The currently selected model
+
+    Returns:
+        popup-classname: The class name to hide the popup.
+    """
+    with open(MODEL_PATH / training_file_name / "parameters.json") as file:
+        model_data = json.load(file)
+
+    if model_data["qpu"]:
+        try:
+            client = Client.from_config(client="qpu")
+            SOLVERS = [qpu.name for qpu in client.get_solvers()]
+
+            if not len(SOLVERS) or model_data["qpu"] not in SOLVERS:
+                raise Exception
+
+        except Exception:
+            return "", True
+
+    return "display-none", False
 
 
 @dash.callback(
@@ -149,6 +200,7 @@ def update_progress(
     background=True,
     inputs=[
         Input("train-button", "n_clicks"),
+        State("qpu-setting", "value"),
         State("n-latents", "value"),
         State("n-epochs", "value"),
         State("file-name", "value"),
@@ -170,7 +222,7 @@ def update_progress(
     prevent_initial_call=True,
 )
 def train(
-    set_progress, train_click: int, n_latents: int, n_epochs: int, file_name: str
+    set_progress, train_click: int, qpu: str, n_latents: int, n_epochs: int, file_name: str
 ) -> tuple[go.Figure, go.Figure, go.Figure]:
     """Runs training and updates UI accordingly.
 
@@ -192,9 +244,7 @@ def train(
             fig_loss: TODO
             fig_reconstructed: TODO
     """
-    model_path = Path("models")
-
-    dvae = ModelWrapper(n_latents=n_latents)
+    dvae = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
     dvae.train_init(n_epochs, perturb_grbm=False)
 
@@ -214,13 +264,13 @@ def train(
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
-    dvae.save(file_path=model_path / file_name)
+    dvae.save(file_path=MODEL_PATH / file_name)
 
-    with open(model_path / file_name / "parameters.json", "w") as f:
+    with open(MODEL_PATH / file_name / "parameters.json", "w") as f:
         json.dump(
             {
                 "n_latents": n_latents,
-                "use_qpu": dvae.USE_QPU,
+                "qpu": qpu,
                 "num_read": dvae.NUM_READS,
                 "loss_function": dvae.LOSS_FUNCTION,
                 "image_size": dvae.IMAGE_SIZE,
@@ -230,7 +280,7 @@ def train(
             f,
         )
 
-    with open(model_path / file_name / "losses.json", "w") as f:
+    with open(MODEL_PATH / file_name / "losses.json", "w") as f:
         json.dump(
             {
                 "mse_losses": dvae._tpar["mse_losses"],
@@ -254,6 +304,7 @@ def train(
     Output("fig-output", "figure"),
     Output("fig-loss", "figure"),
     Output("fig-reconstructed", "figure"),
+    Output("popup", "className", allow_duplicate=True),
     background=True,
     inputs=[
         Input("generate-button", "n_clicks"),
@@ -306,16 +357,25 @@ def generate(
             fig_loss: TODO
             fig_reconstructed: TODO
     """
-    model_path = Path("models")
-
     # load autoencoder model and config
-    with open(model_path / training_file_name / "parameters.json") as file:
+    with open(MODEL_PATH / training_file_name / "parameters.json") as file:
         model_data = json.load(file)
-    with open(model_path / training_file_name / "losses.json") as file:
+    with open(MODEL_PATH / training_file_name / "losses.json") as file:
         loss_data = json.load(file)
 
-    dvae = ModelWrapper(n_latents=model_data["n_latents"])
-    dvae.load(file_path=model_path / training_file_name)
+    if model_data["qpu"]:
+        try:
+            client = Client.from_config(client="qpu")
+            SOLVERS = [qpu.name for qpu in client.get_solvers()]
+
+            if not len(SOLVERS) or model_data["qpu"] not in SOLVERS:
+                raise Exception
+
+        except Exception:
+            return dash.no_update, dash.no_update, dash.no_update, ""
+
+    dvae = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
+    dvae.load(file_path=MODEL_PATH / training_file_name)
 
     if tune_parameters:
         dvae.train_init(n_epochs, perturb_grbm=False, noise=noise)
@@ -342,8 +402,8 @@ def generate(
         loss_data["mse_losses"] += dvae._tpar["mse_losses"]
         loss_data["dvae_losses"] += dvae._tpar["dvae_losses"]
 
-        Path(model_path / training_file_name).mkdir(exist_ok=True)
-        with open(model_path / training_file_name / "losses.json", "w") as file:
+        Path(MODEL_PATH / training_file_name).mkdir(exist_ok=True)
+        with open(MODEL_PATH / training_file_name / "losses.json", "w") as file:
             json.dump(loss_data, file)
 
     mse_losses, dvae_losses = loss_data["mse_losses"], loss_data["dvae_losses"]
@@ -354,4 +414,4 @@ def generate(
 
     fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed
+    return fig_output, fig_loss, fig_reconstructed, "display-none"

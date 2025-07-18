@@ -119,3 +119,40 @@ progress::-webkit-progress-bar {
 .visibility-hidden {
     visibility: hidden;
 }
+
+#popup {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.4);
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 10;
+}
+
+#popup > div {
+    position: absolute;
+    background-color: white;
+    left: calc(50% - 20rem);
+    top: 40%;
+    z-index: 10;
+    padding: 3rem;
+    width: 40rem;
+    border-radius: 1rem;
+    border: 4px solid var(--red-light);
+}
+
+#popup-toggle {
+    position: absolute;
+    right: 0;
+    top: -1.5rem;
+    font-size: 3rem;
+    color: var(--red-light);
+    cursor: pointer;
+    padding: 1rem;
+    transition: color 0.2s ease-in-out;
+}
+
+#popup-toggle:hover {
+    color: var(--red-dark);
+}

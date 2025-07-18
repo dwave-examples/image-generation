@@ -14,11 +14,13 @@
 
 """This file stores the Dash HTML layout for the app."""
 from __future__ import annotations
+from typing import Any, Optional
 
 from dash import dcc, html
 from plotly import graph_objects as go
 
 from demo_configs import (
+    DEFAULT_QPU,
     DESCRIPTION,
     MAIN_HEADER,
     NOISE,
@@ -27,6 +29,21 @@ from demo_configs import (
     THUMBNAIL,
 )
 from src.model_wrapper import display_dataset, get_dataset
+from dwave.cloud import Client
+
+ANNEAL_TIME_RANGES = {}
+
+# Initialize: available QPUs
+try:
+    client = Client.from_config(client="qpu")
+    SOLVERS = [qpu.name for qpu in client.get_solvers()]
+
+    if not len(SOLVERS):
+        raise Exception
+
+except Exception:
+    SOLVERS = ["No Leap Access"]
+
 
 def display_input_data() -> go.Figure:
     """Load data from MNIST and display in input tab.
@@ -69,13 +86,14 @@ def slider(label: str, id: str, config: dict) -> html.Div:
     )
 
 
-def dropdown(label: str, id: str, options: list) -> html.Div:
+def dropdown(label: str, id: str, options: list, value: Optional[Any] = None) -> html.Div:
     """Dropdown element for option selection.
 
     Args:
         label: The title that goes above the dropdown.
         id: A unique selector for this element.
         options: A list of dictionaries of labels and values.
+        value: Optional default value.
     """
     return html.Div(
         className="dropdown-wrapper",
@@ -84,7 +102,7 @@ def dropdown(label: str, id: str, options: list) -> html.Div:
             dcc.Dropdown(
                 id=id,
                 options=options,
-                value=options[0]["value"],
+                value=value if value else options[0]["value"],
                 clearable=False,
                 searchable=False,
             ),
@@ -153,10 +171,17 @@ def generate_train_tab() -> html.Div:
     Returns:
         html.Div: A Div containing the settings for latents and save file name.
     """
+    qpu_options = [{"label": qpu, "value": qpu} for qpu in SOLVERS]
 
     return html.Div(
         className="settings",
         children=[
+            dropdown(
+                "QPU",
+                "qpu-setting",
+                qpu_options,
+                value=DEFAULT_QPU if DEFAULT_QPU in SOLVERS else SOLVERS[0],
+            ),
             slider(
                 "Latents",
                 "n-latents",
@@ -186,7 +211,11 @@ def generate_generate_tab() -> html.Div:
     return html.Div(
         className="settings",
         children=[
-            dropdown("Trained Model", "model-file-name", generate_options(["No Models Found (please train and save a model)"])),
+            dropdown(
+                "Trained Model",
+                "model-file-name",
+                generate_options(["No Models Found (please train and save a model)"])
+            ),
             checklist(
                 "",
                 "tune-params",
@@ -227,8 +256,6 @@ def generate_settings_form() -> dcc.Tabs:
                 id="train-tab",
                 className="tab",
                 children=[
-                    # TODO: make progress bars look nicer
-                    # and decide on 1 (as for tuning) vs. 2 bars
                     generate_train_tab(),
                     html.Div([
                         generate_run_buttons("Train", "Cancel Training"),
@@ -369,6 +396,18 @@ def create_interface():
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
             dcc.Store(id="batch-size"),
             # Header brand banner
+            html.Div(
+                id="popup",
+                className="display-none",
+                children=[
+                    html.Div([
+                        html.H2("Inaccessible QPU"),
+                        html.P("The model selected was trained on a QPU that you do not have access to."),
+                        html.P("Please select or train a new model."),
+                        html.P("x", id="popup-toggle")
+                    ])
+                ]
+            ),
             html.Div(className="banner", children=[html.Img(src=THUMBNAIL)]),
             # Settings and results columns
             html.Div(

@@ -107,7 +107,8 @@ class ModelWrapper:
         n_latents: The number of latent variables in the model.
     """
 
-    def __init__(self, n_latents: Optional[int] = None) -> None:
+    def __init__(self, qpu: str, n_latents: Optional[int] = None) -> None:
+        self.qpu: str = qpu
         self.n_latents: int = n_latents
 
         self._dvae = None
@@ -185,7 +186,7 @@ class ModelWrapper:
                 annealing_time=self.ANNEALING_TIME,
                 n_latents=self.n_latents,
                 random_seed=self.RANDOM_SEED,
-                use_qpu=self.USE_QPU,
+                qpu=self.qpu,
             )
         )
 

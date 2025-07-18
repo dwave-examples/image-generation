@@ -18,16 +18,17 @@ import networkx as nx
 import torch
 from dwave.system import DWaveSampler, FixedEmbeddingComposite
 
-from demo_configs import QPU
-
 
 def greedy_get_subgraph(
-    n_nodes: int, random_seed: int | None, graph: nx.Graph | None = None
+    n_nodes: int,
+    random_seed: Optional[int],
+    graph: Optional[nx.Graph] = None,
+    qpu: Optional[str] = None
 ) -> tuple[nx.Graph, dict]:
     """TODO"""
     generator = random.Random(random_seed)
     if graph is None:
-        qpu = DWaveSampler(solver=QPU)
+        qpu = DWaveSampler(solver=qpu)
         graph = qpu.to_networkx_graph()
 
     assert isinstance(graph, nx.Graph)
@@ -76,13 +77,13 @@ def greedy_get_subgraph(
     return nx.relabel_nodes(subgraph, mapping), mapping
 
 
-def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, use_qpu):
+def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, qpu: Optional[str] = None):
     """TODO: switch to work with refactored plugin"""
-    qpu = DWaveSampler(solver=QPU)
+    qpu = DWaveSampler(solver=qpu)
     graph = qpu.to_networkx_graph()
     graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
 
-    if use_qpu:
+    if qpu:
         sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
         linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
         sampler_kwargs = dict(
