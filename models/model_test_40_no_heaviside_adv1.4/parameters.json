@@ -1,1 +1,1 @@
-{"n_latents": 256, "use_qpu": true, "num_read": 256, "loss_function": "mmd", "image_size": 32, "batch_size": 128, "dateset_size": null}
+{"n_latents": 256, "qpu": "Advantage2_system1.4", "num_read": 256, "loss_function": "mmd", "image_size": 32, "batch_size": 128, "dateset_size": null}
