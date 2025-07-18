@@ -77,37 +77,23 @@ def greedy_get_subgraph(
     return nx.relabel_nodes(subgraph, mapping), mapping
 
 
-def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, qpu: Optional[str] = None):
+def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, qpu: str):
     """TODO: switch to work with refactored plugin"""
     qpu = DWaveSampler(solver=qpu)
     graph = qpu.to_networkx_graph()
     graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
 
-    if qpu:
-        sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
-        linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
-        sampler_kwargs = dict(
-            num_reads=num_reads,
-            # Set `answer_mode` to "raw" so no samples are aggregated
-            answer_mode="raw",
-            # Set `auto_scale`` to `False` so the sampler sample from the intended distribution
-            auto_scale=False,
-            annealing_time=annealing_time,
-            label="Examples - DVAE",
-        )
-
-    else:
-        from dwave.samplers import SimulatedAnnealingSampler
-
-        sampler = SimulatedAnnealingSampler()
-        linear_range, quadratic_range = None, None
-        sampler_kwargs = dict(
-            num_reads=num_reads,
-            beta_range=[1, 1],
-            proposal_acceptance_criterion="Gibbs",
-            randomize_order=True,
-            num_sweeps=100,
-        )
+    sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
+    linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
+    sampler_kwargs = dict(
+        num_reads=num_reads,
+        # Set `answer_mode` to "raw" so no samples are aggregated
+        answer_mode="raw",
+        # Set `auto_scale`` to `False` so the sampler sample from the intended distribution
+        auto_scale=False,
+        annealing_time=annealing_time,
+        label="Examples - ML MNIST Image Gen",
+    )
 
     return sampler, sampler_kwargs, graph, linear_range, quadratic_range
 
