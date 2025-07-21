@@ -30,9 +30,8 @@ from demo_configs import (
 from src.model_wrapper import display_dataset, get_dataset
 from dwave.cloud import Client
 
-ANNEAL_TIME_RANGES = {}
 
-# Initialize: available QPUs
+# Initialize available QPUs
 try:
     client = Client.from_config(client="qpu")
     SOLVERS = [qpu.name for qpu in client.get_solvers()]
@@ -232,6 +231,26 @@ def generate_generate_tab() -> html.Div:
     )
 
 
+def generate_progress_bar(index: int) -> html.Div:
+    """Create progress bar.
+
+    Returns:
+        html.Div: A Div containing a progress bar and captions.
+    """
+
+    return html.Div(
+        [
+            html.Progress(value="0", id={"type": "progress", "index": index}),
+            html.Div([
+                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": index}),
+                html.P("Batch:", id={"type": "progress-caption-batch", "index": index}),
+            ], className="display-flex")
+        ],
+        id={"type": "progress-wrapper", "index": index},
+        className="visibility-hidden",
+    )
+
+
 def generate_settings_form() -> dcc.Tabs:
     """This function generates settings training and generating.
 
@@ -251,13 +270,7 @@ def generate_settings_form() -> dcc.Tabs:
                     generate_train_tab(),
                     html.Div([
                         generate_run_buttons("Train", "Cancel Training"),
-                        html.Div([
-                            html.Progress(value="0", id={"type": "progress", "index": 0}),
-                            html.Div([
-                                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": 0}),
-                                html.P("Batch:", id={"type": "progress-caption-batch", "index": 0}),
-                            ], className="display-flex")
-                        ], id={"type": "progress-wrapper", "index": 0}, className="visibility-hidden")
+                        generate_progress_bar(0),
                     ]),
                 ],
             ),
@@ -270,13 +283,7 @@ def generate_settings_form() -> dcc.Tabs:
                     generate_generate_tab(),
                     html.Div([
                         generate_run_buttons("Generate", "Cancel Generation"),
-                        html.Div([
-                            html.Progress(value="0", id={"type": "progress", "index": 1}),
-                            html.Div([
-                                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": 1}),
-                                html.P("Batch:", id={"type": "progress-caption-batch", "index": 1}),
-                            ], className="display-flex")
-                        ], id={"type": "progress-wrapper", "index": 1}, className="visibility-hidden")
+                        generate_progress_bar(1),
                     ]),
                 ],
             ),
