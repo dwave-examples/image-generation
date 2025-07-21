@@ -23,7 +23,6 @@ from demo_configs import (
     DEFAULT_QPU,
     DESCRIPTION,
     MAIN_HEADER,
-    NOISE,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
     THUMBNAIL,
@@ -228,13 +227,6 @@ def generate_generate_tab() -> html.Div:
                     "n-epochs-tune",
                     SLIDER_EPOCHS,
                 ),
-                html.Label("Noise (optional)", className="display-none"),
-                dcc.Input(
-                    id="noise",
-                    type="number",
-                    className="display-none",
-                    **NOISE,
-                ),
             ], id="tune-parameter-settings")
         ],
     )
@@ -395,6 +387,7 @@ def create_interface():
         children=[
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
             dcc.Store(id="batch-size"),
+            dcc.Store(id="last-trained-model"),
             # Header brand banner
             html.Div(
                 id="popup",

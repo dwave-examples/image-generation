@@ -220,15 +220,11 @@ class ModelWrapper:
     def train_init(
         self,
         n_epochs: int,
-        perturb_grbm: bool = False,
-        noise: Optional[float] = None,
     ) -> None:
         """Initialize the model for training.
 
         Args:
             n_epochs: Number of epochs to train. Used to determine the learning rate schedules.
-            perturb_grbm: Whether to perturb the GRBM parameters before training.
-            noise: Only used if ``perturb_grbm`` is ``True``.
         """
         # set the random seed for reproducibility
         torch.manual_seed(self.RANDOM_SEED)
@@ -249,9 +245,6 @@ class ModelWrapper:
             self._load_dataset(batch_size=self.BATCH_SIZE, dataset_size=self.DATASET_SIZE)
 
         n_batches = len(self._dataloader)
-
-        if perturb_grbm:
-            self.perturb_grbm_parameters(noise=noise)
 
         total_opt_steps = n_epochs * n_batches
 
@@ -355,18 +348,6 @@ class ModelWrapper:
         self._tpar["opt_step"] += 1
 
         return mse_loss
-
-    def perturb_grbm_parameters(self, noise: float) -> None:
-        """Perturb the GRBM parameters pre model tuning.
-
-        Args:
-            noise: Noise for perturbing the model parameters.
-
-        Returns:
-            go.Figure: Plotly figure.
-        """
-        ###TODO
-        ...
 
     def generate_output(self) -> go.Figure:
         """Generate output images from trained model.

@@ -82,7 +82,7 @@ def toggle_popup(popup_toggle: list[int]) -> str:
     Output("generate-button", "disabled"),
     Input("model-file-name", "value"),
 )
-def check_qpu_availability(training_file_name: str) -> str:
+def check_qpu_availability(model_file_name: str) -> tuple[str, bool]:
     """Checks whether user has access to QPU associated with model when model changes.
 
     Args:
@@ -90,8 +90,9 @@ def check_qpu_availability(training_file_name: str) -> str:
 
     Returns:
         popup-classname: The class name to hide the popup.
+        generate-button-disabled: Whether to disable or enable the Generate button.
     """
-    with open(MODEL_PATH / training_file_name / "parameters.json") as file:
+    with open(MODEL_PATH / model_file_name / "parameters.json") as file:
         model_data = json.load(file)
 
     if model_data["qpu"]:
@@ -121,28 +122,26 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
     Returns:
         tune-parameter-settings-classname: The class name to show/hide the tune parameter settings.
     """
-    if len(tune_params):
-        return ""
-
-    return "display-none"
+    return "" if len(tune_params) else "display-none"
 
 
 @dash.callback(
     Output("model-file-name", "options"),
     Output("model-file-name", "value"),
     Output("batch-size", "data"),
-    Input("fig-output", "figure"),
+    Input("last-trained-model", "data"),
 )
-###TODO make trigger when training finishes
-def initialize_training_model_dropdown(fig: go.Figure) -> tuple[list[str], str]:
-    """Initializes the Trained Models dropdown options based on model files available.
+def initialize_training_model(last_trained_model: str) -> tuple[list[str], str, int]:
+    """Initializes the Trained Models dropdown options based on model files available and sets
+    the batch size data store.
 
     Args:
-        TODO
+        last_trained_model: The most recently trained model directiory name.
 
     Returns:
         model-file-name-options: The options for the Trained Model dropdown selection.
         model-file-name-value: The value of the dropdown.
+        batch-size-data: The batch size that was read from the model param file.
     """
     models = []
     project_directory = os.path.dirname(os.path.realpath(__file__))
@@ -160,7 +159,7 @@ def initialize_training_model_dropdown(fig: go.Figure) -> tuple[list[str], str]:
     with open("src/training_parameters.yaml", "r") as f:
         parameters = yaml.safe_load(f)
 
-    return models, models[0], parameters["BATCH_SIZE"]
+    return models, last_trained_model if last_trained_model else models[0], parameters["BATCH_SIZE"]
 
 
 @dash.callback(
@@ -180,7 +179,20 @@ def update_progress(
     progress_max: str,
     n_epochs: int,
     batch_size: int
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
+    """Updates progress bar with epochs and batches completed.
+
+    Args:
+        progress_value: The current value of the progress bar.
+        progress_max: The maximum value of the progress bar ie progress_value/progress_max.
+        n_epochs: The number of epochs to complete.
+        batch_size: The number of items in a batch.
+
+    Returns:
+        progress-caption-epoch: The caption of the progress bar that tracks the completed epochs.
+        progress-caption-batch: The caption of the progress bar that tracks the completed batches.
+        progress-wrapper-className: The classname of the progress wrapper.
+    """
     progress_value = int(progress_value) if progress_value else 0
     progress_max = int(progress_max) if progress_max else 0
 
@@ -189,7 +201,7 @@ def update_progress(
     return (
         f"Epochs Completed: {curr_epoch}/{n_epochs}",
         f"Batch: {progress_value%(n_epochs*batch_size)}/{math.floor(progress_max/n_epochs)}",
-        ""
+        "",
     )
 
 
@@ -197,6 +209,7 @@ def update_progress(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
+    Output("last-trained-model", "data"),
     background=True,
     inputs=[
         Input("train-button", "n_clicks"),
@@ -223,7 +236,7 @@ def update_progress(
 )
 def train(
     set_progress, train_click: int, qpu: str, n_latents: int, n_epochs: int, file_name: str
-) -> tuple[go.Figure, go.Figure, go.Figure]:
+) -> tuple[go.Figure, go.Figure, go.Figure, str]:
     """Runs training and updates UI accordingly.
 
     This function is called when the ``Train`` button is clicked. It takes in all form values and
@@ -232,21 +245,23 @@ def train(
 
     Args:
         train_click: The (total) number of times the train button has been clicked.
-        n_latents: TODO
-        n_epochs: TODO
-        file_name: TODO
+        qpu: The selected QPU.
+        n_latents: The value of the latents setting.
+        n_epochs: The value of th epochs setting
+        file_name: The file name to save to.
 
     Returns:
         A tuple containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
-            fig_output: TODO
-            fig_loss: TODO
-            fig_reconstructed: TODO
+            fig-output: The generated image output.
+            fig-loss: The graphs showing the MSE Loss and Other Loss.
+            fig-reconstructed: The image comparing the reconstructed image to the original.
+            last-trained-model: The directory name of the model trained by this run.
     """
     dvae = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
-    dvae.train_init(n_epochs, perturb_grbm=False)
+    dvae.train_init(n_epochs)
 
     for epoch in range(n_epochs):
         start_time = time.perf_counter()
@@ -297,7 +312,7 @@ def train(
 
     fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed
+    return fig_output, fig_loss, fig_reconstructed, file_name
 
 
 @dash.callback(
@@ -310,7 +325,6 @@ def train(
         Input("generate-button", "n_clicks"),
         State("model-file-name", "value"),
         State("tune-params", "value"),
-        State("noise", "value"),
         State("n-epochs-tune", "value"),
     ],
     running=[
@@ -332,9 +346,8 @@ def train(
 def generate(
     set_progress,
     generate_click: int,
-    training_file_name: str,
+    model_file_name: str,
     tune_parameters: list,
-    noise: float,
     n_epochs: int,
 ) -> tuple[go.Figure, go.Figure, go.Figure]:
     """Runs generation and updates UI accordingly.
@@ -345,22 +358,22 @@ def generate(
 
     Args:
         generate_click: The (total) number of times the generate button has been clicked.
-        training_file_name: TODO
-        tune_parameters: TODO
-        noise: TODO
+        model_file_name: The currently selected model directory name.
+        tune_parameters: Whether to tune the parameters while generating.
+        n_epochs: The number of epochs for the parameter tuning.
 
     Returns:
         A tuple containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
-            fig_output: TODO
-            fig_loss: TODO
-            fig_reconstructed: TODO
+            fig-output: The generated image output.
+            fig-loss: The graphs showing the MSE Loss and Other Loss.
+            fig-reconstructed: The image comparing the reconstructed image to the original.
     """
     # load autoencoder model and config
-    with open(MODEL_PATH / training_file_name / "parameters.json") as file:
+    with open(MODEL_PATH / model_file_name / "parameters.json") as file:
         model_data = json.load(file)
-    with open(MODEL_PATH / training_file_name / "losses.json") as file:
+    with open(MODEL_PATH / model_file_name / "losses.json") as file:
         loss_data = json.load(file)
 
     if model_data["qpu"]:
@@ -375,10 +388,10 @@ def generate(
             return dash.no_update, dash.no_update, dash.no_update, ""
 
     dvae = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
-    dvae.load(file_path=MODEL_PATH / training_file_name)
+    dvae.load(file_path=MODEL_PATH / model_file_name)
 
     if tune_parameters:
-        dvae.train_init(n_epochs, perturb_grbm=False, noise=noise)
+        dvae.train_init(n_epochs)
 
         for epoch in range(n_epochs):
             start_time = time.perf_counter()
@@ -397,13 +410,13 @@ def generate(
                 f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
             )
 
-        training_file_name += f"_tuned_{n_epochs}"
+        model_file_name += f"_tuned_{n_epochs}"
 
         loss_data["mse_losses"] += dvae._tpar["mse_losses"]
         loss_data["dvae_losses"] += dvae._tpar["dvae_losses"]
 
-        Path(MODEL_PATH / training_file_name).mkdir(exist_ok=True)
-        with open(MODEL_PATH / training_file_name / "losses.json", "w") as file:
+        Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
+        with open(MODEL_PATH / model_file_name / "losses.json", "w") as file:
             json.dump(loss_data, file)
 
     mse_losses, dvae_losses = loss_data["mse_losses"], loss_data["dvae_losses"]

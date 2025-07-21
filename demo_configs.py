@@ -48,9 +48,3 @@ SLIDER_EPOCHS = {
     "step": 1,
     "value": 10,
 }
-
-NOISE = {
-    "min": 0,
-    "max": 1,
-    "step": 0.01,
-}
