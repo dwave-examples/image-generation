@@ -15,7 +15,7 @@ import torch
 
 
 class Decoder(torch.nn.Module):
-    def __init__(self, n_latents):
+    def __init__(self, n_latents: int):
         super().__init__()
         channels = [n_latents, 128, 64, 32, 1]
         layers = []
@@ -60,7 +60,7 @@ class Decoder(torch.nn.Module):
 
 
 class DecoderV2(torch.nn.Module):
-    def __init__(self, n_latents):
+    def __init__(self, n_latents: int):
         super().__init__()
         channels = [256, 64, 16, 4, 1]
         layers = []

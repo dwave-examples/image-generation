@@ -18,7 +18,7 @@ import torch
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, n_latents):
+    def __init__(self, n_latents: int):
         super().__init__()
         channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
         layers = []
@@ -50,7 +50,7 @@ class Encoder(torch.nn.Module):
 
 
 class EncoderV2(torch.nn.Module):
-    def __init__(self, n_latents):
+    def __init__(self, n_latents: int):
         super().__init__()
         channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
         layers = []

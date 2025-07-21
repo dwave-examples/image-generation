@@ -43,7 +43,7 @@ def train_dvae(opt_step: int, epoch: int) -> bool:
         opt_step: The current optimization step.
         epoch: The current epoch.
     """
-    ###TODO: this is not useful in its current state
+    ###TODO: Remove? this is not useful in its current state
     return True
 
 
@@ -58,7 +58,11 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
     return epoch < 6 and opt_step % 10 == 0
 
 
-def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = None):
+def get_dataset(
+    image_size: int,
+    batch_size: int,
+    dataset_size: Optional[int] = None
+) -> DataLoader:
     transform = Compose(
         [
             Resize((image_size, image_size)),
@@ -82,7 +86,7 @@ def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = 
     return DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
 
-def display_dataset(dataset, num_rows):
+def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
     batch = next(iter(dataset))[0]
     reconstruction_tensor_for_plot = make_grid(batch.cpu(), nrow=num_rows)
     fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
@@ -97,7 +101,7 @@ def display_dataset(dataset, num_rows):
 
 class TrainingError(Exception):
     """Error when training the model."""
-    ###TODO
+    ###TODO: Remove?
 
 
 class ModelWrapper:
@@ -381,7 +385,7 @@ class ModelWrapper:
         )
         return fig
 
-    def generate_loss_plot(self, mse_losses, dvae_losses) -> go.Figure:
+    def generate_loss_plot(self, mse_losses: list[float], dvae_losses: list[float]) -> go.Figure:
         """Generate the loss plots for MSE and DVAE loss.
 
         Args:

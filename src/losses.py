@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import torch
 from dimod import Sampler, SampleSet
@@ -28,14 +28,17 @@ class RadialBasisFunction(torch.nn.Module):
         self,
         num_features: int,
         mul_factor: int | float = 2.0,
-        bandwidth: float | None = None,
+        bandwidth: Optional[float] = None,
     ):
         super().__init__()
         bandwidth_multipliers = mul_factor ** (torch.arange(num_features) - num_features // 2)
         self.register_buffer("bandwidth_multipliers", bandwidth_multipliers)
         self.bandwidth = bandwidth
 
-    def get_bandwidth(self, l2_distance_matrix: torch.Tensor | None = None) -> torch.Tensor | float:
+    def get_bandwidth(
+        self,
+        l2_distance_matrix: Optional[torch.Tensor] = None
+    ) -> torch.Tensor | float:
         if self.bandwidth is None:
             assert l2_distance_matrix is not None
 
@@ -45,7 +48,7 @@ class RadialBasisFunction(torch.nn.Module):
 
         return self.bandwidth
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         distance_matrix = torch.cdist(x, x, p=2)
         bandwidth = self.get_bandwidth(distance_matrix.detach()) * self.bandwidth_multipliers
 
@@ -61,7 +64,7 @@ def mmd_loss(
     linear_range: tuple[float, float],
     quadratic_range: tuple[float, float],
     prefactor: float,
-):
+) -> float:
     with torch.no_grad():
         samples = grbm.sample(
             sampler,
@@ -95,7 +98,7 @@ def nll_loss(
     prefactor: float,
     measure_prefactor: bool,
     persistent_qpu_sample_helper: PersistentQPUSampleHelper,
-    sample_set: SampleSet | None = None,
+    sample_set: Optional[SampleSet] = None,
 ) -> tuple[float, torch.Tensor, SampleSet]:
     prefactor, sample_set = persistent_qpu_sample_helper.find_prefactor(
         prefactor,

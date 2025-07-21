@@ -25,7 +25,18 @@ def greedy_get_subgraph(
     graph: Optional[nx.Graph] = None,
     qpu: Optional[str] = None
 ) -> tuple[nx.Graph, dict]:
-    """TODO"""
+    """TODO
+
+    Args:
+        n_nodes: TODO
+        random_seed: TODO
+        graph: TODO
+        qpu: The selected QPU.
+
+    Returns:
+        nx.Graph: TODO
+        dict: TODO
+    """
     generator = random.Random(random_seed)
     if graph is None:
         qpu = DWaveSampler(solver=qpu)
@@ -77,8 +88,31 @@ def greedy_get_subgraph(
     return nx.relabel_nodes(subgraph, mapping), mapping
 
 
-def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_seed, qpu: str):
-    """TODO: switch to work with refactored plugin"""
+def get_sampler_and_sampler_kwargs(
+    num_reads: int,
+    annealing_time: float,
+    n_latents: int,
+    random_seed: int,
+    qpu: str
+) -> tuple[FixedEmbeddingComposite, dict, nx.Graph, tuple[float, float], tuple[float, float]]:
+    """TODO
+
+    Args:
+        num_reads: TODO
+        annealing_time: TODO
+        n_latents: TODO
+        random_seed: TODO
+        qpu: TODO
+
+    Returns:
+        sampler: TODO
+        sampler_kwargs: TODO
+        graph: TODO
+        linear_range: TODO
+        quadratic_range: TODO
+    """
+
+    ###TODO: switch to work with refactored plugin
     qpu = DWaveSampler(solver=qpu)
     graph = qpu.to_networkx_graph()
     graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
@@ -100,8 +134,15 @@ def get_sampler_and_sampler_kwargs(num_reads, annealing_time, n_latents, random_
 
 def get_latent_to_discrete(
     mode: Optional[Literal["heaviside"]],
-) -> Callable[[torch.Tensor, int], torch.Tensor] | None:
-    """TODO"""
+) -> Optional[Callable[[torch.Tensor, int], torch.Tensor]]:
+    """TODO
+
+    Args:
+        mode: TODO
+
+    Returns:
+        latent_to_discrete: TODO
+    """
     if mode is None:
         return None
 

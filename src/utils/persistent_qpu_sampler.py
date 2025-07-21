@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import torch
 from dimod import BinaryQuadraticModel, Sampler, SampleSet, as_samples
@@ -10,10 +10,26 @@ if TYPE_CHECKING:
     from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 
 
-def push_to_deque(deque, x, deque_size=None, dim=0):
-    """Handling `deque` tensor as a (set of) deque/FIFO, push the content of `x` into it."""
+def push_to_deque(
+    deque: torch.Tensor,
+    x: torch.Tensor,
+    deque_size: Optional[int] = None,
+    dim: int = 0,
+) -> torch.Tensor:
+    """Handling `deque` tensor as a (set of) deque/FIFO, push the content of `x` into it.
+
+    Args:
+        deque: TODO
+        x: TODO
+        deque_size: TODO
+        dim: TODO
+
+    Returns:
+        deque: TODO
+    """
     if deque_size is None:
         deque_size = deque.shape[dim]
+
     deque_dims = deque.dim()
     input_size = x.shape[dim]
     dims_right = deque_dims - dim - 1
@@ -29,6 +45,7 @@ def push_to_deque(deque, x, deque_size=None, dim=0):
     )
     input_slicing = (slice(None),) * dim + (slice(-deque_size, None),) + (slice(None),) * dims_right
     deque = torch.cat((deque[deque_slicing], x[input_slicing]), dim=dim)
+
     return deque
 
 
@@ -37,12 +54,29 @@ def _find_prefactor(
     grbm: GraphRestrictedBoltzmannMachine,
     sampler: Sampler,
     sampler_kwargs: dict,
-    linear_range,
-    quadratic_range,
+    linear_range: tuple[float, float],
+    quadratic_range: tuple[float, float],
     atol: float = 0.05,
     measure_prefactor: bool = True,
-    sample_set: SampleSet | None = None,
+    sample_set: Optional[SampleSet] = None,
 ) -> tuple[float, SampleSet]:
+    """TODO
+
+    Args:
+        prefactor: TODO
+        grbm: TODO
+        sampler: TODO
+        sampler_kwargs: TODO
+        linear_range: TODO
+        quadratic_range: TODO
+        atol: TODO
+        measure_prefactor: TODO
+        sample_set: TODO
+
+    Returns:
+        prefactor: TODO
+        sample_set: TODO
+    """
     if sample_set is None:
         with torch.no_grad():
             sample_set = grbm.sample(
@@ -96,7 +130,25 @@ class PersistentQPUSampleHelper:
         measure_prefactor: bool = True,
         resample: bool = False,
         reset_deque: bool = False,
-    ):
+    ) -> tuple[float, SampleSet]:
+        """TODO
+
+        Args:
+            previous_prefactor: TODO
+            grbm: TODO
+            sampler: TODO
+            sampler_kwargs: TODO
+            linear_range: TODO
+            quadratic_range: TODO
+            atol: TODO
+            measure_prefactor: TODO
+            resample: TODO
+            reset_deque: TODO
+
+        Returns:
+            prefactor: TODO
+            sample_set: TODO
+        """
         if reset_deque:
             self.current_deque_size = 0
             self.iterations_since_last_resampling = 0
