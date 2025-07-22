@@ -187,7 +187,7 @@ def generate_train_tab() -> html.Div:
             ),
             slider(
                 "Epochs",
-                "n-epochs",
+                {"type": "n-epochs", "index": 0},
                 SLIDER_EPOCHS,
             ),
             html.Label("Save to File Name (optional)"),
@@ -223,7 +223,7 @@ def generate_generate_tab() -> html.Div:
             html.Div([
                 slider(
                     "Epochs",
-                    "n-epochs-tune",
+                    {"type": "n-epochs", "index": 1},
                     SLIDER_EPOCHS,
                 ),
             ], id="tune-parameter-settings")
@@ -393,7 +393,6 @@ def create_interface():
         id="app-container",
         children=[
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
-            dcc.Store(id="batch-size"),
             dcc.Store(id="last-trained-model"),
             # Header brand banner
             html.Div(

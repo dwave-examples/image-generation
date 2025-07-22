@@ -120,12 +120,10 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
 @dash.callback(
     Output("model-file-name", "options"),
     Output("model-file-name", "value"),
-    Output("batch-size", "data"),
     Input("last-trained-model", "data"),
 )
-def initialize_training_model(last_trained_model: str) -> tuple[list[str], str, int]:
-    """Initializes the Trained Models dropdown options based on model files available and sets
-    the batch size data store.
+def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
+    """Initializes the Trained Models dropdown options based on model files available.
 
     Args:
         last_trained_model: The most recently trained model directiory name.
@@ -133,7 +131,6 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str, 
     Returns:
         model-file-name-options: The options for the Trained Model dropdown selection.
         model-file-name-value: The value of the dropdown.
-        batch-size-data: The batch size that was read from the model param file.
     """
     models = []
     project_directory = os.path.dirname(os.path.realpath(__file__))
@@ -148,10 +145,7 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str, 
     if not len(models):
         models = generate_options(["No Models Found (please train and save a model)"])
 
-    with open("src/training_parameters.yaml", "r") as f:
-        parameters = yaml.safe_load(f)
-
-    return models, last_trained_model if last_trained_model else models[0], parameters["BATCH_SIZE"]
+    return models, last_trained_model if last_trained_model else models[0],
 
 
 @dash.callback(
@@ -161,8 +155,7 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str, 
     inputs=[
         Input({"type": "progress", "index": MATCH}, "value"),
         State({"type": "progress", "index": MATCH}, "max"),
-        State("n-epochs-tune", "value"),
-        State("batch-size", "data"),
+        State({"type": "n-epochs", "index": MATCH}, "value"),
     ],
     prevent_initial_call=True,
 )
@@ -170,7 +163,6 @@ def update_progress(
     progress_value: str,
     progress_max: str,
     n_epochs: int,
-    batch_size: int
 ) -> tuple[str, str, str]:
     """Updates progress bar with epochs and batches completed.
 
@@ -178,7 +170,6 @@ def update_progress(
         progress_value: The current value of the progress bar.
         progress_max: The maximum value of the progress bar ie progress_value/progress_max.
         n_epochs: The number of epochs to complete.
-        batch_size: The number of items in a batch.
 
     Returns:
         progress-caption-epoch: The caption of the progress bar that tracks the completed epochs.
@@ -188,11 +179,12 @@ def update_progress(
     progress_value = int(progress_value) if progress_value else 0
     progress_max = int(progress_max) if progress_max else 0
 
-    curr_epoch = math.floor(progress_value/(n_epochs*batch_size))
+    epoch_size = math.floor(progress_max/n_epochs)
+    curr_epoch = math.floor(progress_value/epoch_size)
 
     return (
         f"Epochs Completed: {curr_epoch}/{n_epochs}",
-        f"Batch: {progress_value%(n_epochs*batch_size)}/{math.floor(progress_max/n_epochs)}",
+        f"Batch: {progress_value%epoch_size}/{epoch_size}",
         "",
     )
 
@@ -207,7 +199,7 @@ def update_progress(
         Input("train-button", "n_clicks"),
         State("qpu-setting", "value"),
         State("n-latents", "value"),
-        State("n-epochs", "value"),
+        State({"type": "n-epochs", "index": 0}, "value"),
         State("file-name", "value"),
     ],
     running=[
@@ -317,7 +309,7 @@ def train(
         Input("generate-button", "n_clicks"),
         State("model-file-name", "value"),
         State("tune-params", "value"),
-        State("n-epochs-tune", "value"),
+        State({"type": "n-epochs", "index": 1}, "value"),
     ],
     running=[
         (Output("cancel-generation-button", "className"), "", "display-none"),
