@@ -112,7 +112,6 @@ def get_sampler_and_sampler_kwargs(
         quadratic_range: TODO
     """
 
-    ###TODO: switch to work with refactored plugin
     qpu = DWaveSampler(solver=qpu)
     graph = qpu.to_networkx_graph()
     graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
