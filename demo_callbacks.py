@@ -69,7 +69,7 @@ def toggle_popup(popup_toggle: list[int]) -> str:
     """Hide popup when close button is clicked.
 
     Args:
-        popup_toggle: The close button for the popup toggle
+        popup_toggle: The close button for the popup toggle.
 
     Returns:
         popup-classname: The class name to hide the popup.

@@ -101,7 +101,6 @@ def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
 
 class TrainingError(Exception):
     """Error when training the model."""
-    ###TODO: Remove?
 
 
 class ModelWrapper:
@@ -444,6 +443,3 @@ class ModelWrapper:
 
         return fig
 
-    def generate_training_data(self) -> go.Figure:
-        """Generate original images used for training."""
-        # TODO: return unalterted training images from dataset
