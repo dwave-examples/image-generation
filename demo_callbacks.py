@@ -27,7 +27,7 @@ from dash.dependencies import Input, Output, State
 from dwave.cloud import Client
 from plotly import graph_objects as go
 
-from demo_interface import generate_options
+from demo_interface import SOLVERS, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
@@ -95,16 +95,8 @@ def check_qpu_availability(model_file_name: str) -> tuple[str, bool]:
     with open(MODEL_PATH / model_file_name / "parameters.json") as file:
         model_data = json.load(file)
 
-    if model_data["qpu"]:
-        try:
-            client = Client.from_config(client="qpu")
-            SOLVERS = [qpu.name for qpu in client.get_solvers()]
-
-            if not len(SOLVERS) or model_data["qpu"] not in SOLVERS:
-                raise Exception
-
-        except Exception:
-            return "", True
+    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
+        return "", True
 
     return "display-none", False
 
@@ -376,16 +368,8 @@ def generate(
     with open(MODEL_PATH / model_file_name / "losses.json") as file:
         loss_data = json.load(file)
 
-    if model_data["qpu"]:
-        try:
-            client = Client.from_config(client="qpu")
-            SOLVERS = [qpu.name for qpu in client.get_solvers()]
-
-            if not len(SOLVERS) or model_data["qpu"] not in SOLVERS:
-                raise Exception
-
-        except Exception:
-            return dash.no_update, dash.no_update, dash.no_update, ""
+    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
+        return dash.no_update, dash.no_update, dash.no_update, ""
 
     dvae = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
     dvae.load(file_path=MODEL_PATH / model_file_name)
