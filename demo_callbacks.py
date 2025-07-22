@@ -194,6 +194,7 @@ def update_progress(
     Output("fig-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("last-trained-model", "data"),
+    Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
     background=True,
     inputs=[
         Input("train-button", "n_clicks"),
@@ -242,6 +243,7 @@ def train(
             fig-loss: The graphs showing the MSE Loss and Other Loss.
             fig-reconstructed: The image comparing the reconstructed image to the original.
             last-trained-model: The directory name of the model trained by this run.
+            progress-wrapper-className: The classname of the progress wrapper.
     """
     dvae = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
@@ -296,7 +298,7 @@ def train(
 
     fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed, file_name
+    return fig_output, fig_loss, fig_reconstructed, file_name, "visibility-hidden"
 
 
 @dash.callback(
@@ -304,6 +306,7 @@ def train(
     Output("fig-loss", "figure"),
     Output("fig-reconstructed", "figure"),
     Output("popup", "className", allow_duplicate=True),
+    Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
     background=True,
     inputs=[
         Input("generate-button", "n_clicks"),
@@ -353,6 +356,7 @@ def generate(
             fig-output: The generated image output.
             fig-loss: The graphs showing the MSE Loss and Other Loss.
             fig-reconstructed: The image comparing the reconstructed image to the original.
+            progress-wrapper-className: The classname of the progress wrapper.
     """
     # load autoencoder model and config
     with open(MODEL_PATH / model_file_name / "parameters.json") as file:
@@ -361,7 +365,7 @@ def generate(
         loss_data = json.load(file)
 
     if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return dash.no_update, dash.no_update, dash.no_update, ""
+        return dash.no_update, dash.no_update, dash.no_update, "", "visibility-hidden"
 
     dvae = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
     dvae.load(file_path=MODEL_PATH / model_file_name)
@@ -403,4 +407,4 @@ def generate(
 
     fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed, "display-none"
+    return fig_output, fig_loss, fig_reconstructed, "display-none", "visibility-hidden"
