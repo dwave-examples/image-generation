@@ -26,7 +26,7 @@ from dash.dependencies import Input, Output, State
 from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
 from plotly import graph_objects as go
 
-from demo_interface import SOLVERS, generate_options
+from demo_interface import SOLVERS, generate_model_data, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
@@ -37,6 +37,7 @@ def create_model_files(
     file_name: str,
     qpu: str,
     n_latents: int,
+    n_epochs: int,
     loss_data: dict
 ):
     """Creates model files, losses file, and parameters file.
@@ -45,7 +46,8 @@ def create_model_files(
         dvae: The DVAE model.
         file_name: The directory name to save all the files to.
         qpu: The QPU associated with the model.
-        n_latents: The number of latents
+        n_latents: The number of latents.
+        n_epochs: The number of epochs.
         loss_data: The loss data to save.
 
     Returns:
@@ -57,6 +59,7 @@ def create_model_files(
         json.dump(
             {
                 "n_latents": n_latents,
+                "n_epochs": n_epochs,
                 "qpu": qpu,
                 "num_read": dvae.NUM_READS,
                 "loss_function": dvae.LOSS_FUNCTION,
@@ -118,10 +121,12 @@ def toggle_popup(popup_toggle: list[int]) -> str:
 @dash.callback(
     Output("popup", "className"),
     Output("generate-button", "disabled"),
+    Output("model-details", "children"),
     Input("model-file-name", "value"),
 )
-def check_qpu_availability(model_file_name: str) -> tuple[str, bool]:
-    """Checks whether user has access to QPU associated with model when model changes.
+def check_qpu_and_update_model(model_file_name: str) -> tuple[str, bool]:
+    """Checks whether user has access to QPU associated with model and updates the model details
+    when model changes.
 
     Args:
         model: The currently selected model
@@ -129,14 +134,17 @@ def check_qpu_availability(model_file_name: str) -> tuple[str, bool]:
     Returns:
         popup-classname: The class name to hide the popup.
         generate-button-disabled: Whether to disable or enable the Generate button.
+        model-details-children: The model details to display.
     """
     with open(MODEL_PATH / model_file_name / "parameters.json") as file:
         model_data = json.load(file)
 
-    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return "", True
+    model_details = generate_model_data(model_data)
 
-    return "display-none", False
+    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
+        return "", True, model_details
+
+    return "display-none", False, model_details
 
 
 @dash.callback(
@@ -308,6 +316,7 @@ def train(
         file_name,
         qpu,
         n_latents,
+        n_epochs,
         {
             "mse_losses": dvae._tpar["mse_losses"],
             "dvae_losses": dvae._tpar["dvae_losses"],
@@ -426,6 +435,7 @@ def generate(
             model_file_name,
             model_data["qpu"],
             model_data["n_latents"],
+            n_epochs,
             loss_data
         )
 

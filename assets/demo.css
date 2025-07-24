@@ -156,3 +156,11 @@ progress::-webkit-progress-bar {
 #popup-toggle:hover {
     color: var(--red-dark);
 }
+
+.model-details {
+    margin-top: 1rem;
+}
+
+.model-details p {
+    margin-bottom: 0;
+}

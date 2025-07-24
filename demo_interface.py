@@ -158,6 +158,32 @@ def radio(label: str, id: str, options: list, value: int, inline: bool = True) -
     )
 
 
+def generate_model_data(model_data: dict) -> html.Div:
+    """Display model data.
+
+    Returns:
+        html.Div: A Div containing the model data associated with the selected model.
+    """
+
+    return html.Div(
+        children=[
+            html.Div(
+                [
+                    html.P([html.B("QPU: "), model_data["qpu"]]),
+                    html.P([html.B("Epochs: "), model_data["n_epochs"]]),
+                ]
+            ),
+            html.Div(
+                [
+                    html.P([html.B("Latents: "), model_data["n_latents"]]),
+                    html.P([html.B("Batch Size: "), model_data["batch_size"]]),
+                ]
+            )
+        ],
+        className="display-flex model-details"
+    )
+
+
 def generate_options(options_list: list) -> list[dict]:
     """Generates options for dropdowns, checklists, radios, etc."""
     return [{"label": label, "value": i} for i, label in enumerate(options_list)]
@@ -214,6 +240,7 @@ def generate_generate_tab() -> html.Div:
                 "model-file-name",
                 generate_options(["No Models Found (please train and save a model)"])
             ),
+            html.P(id="model-details"),
             checklist(
                 "",
                 "tune-params",
