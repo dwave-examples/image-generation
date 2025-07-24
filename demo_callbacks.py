@@ -18,19 +18,57 @@ import json
 import math
 import os
 import time
-import yaml
 from pathlib import Path
 
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
-from dwave.cloud import Client
+from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
 from plotly import graph_objects as go
 
 from demo_interface import SOLVERS, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
+
+
+def create_model_files(
+    dvae: DiscreteAutoEncoder,
+    file_name: str,
+    qpu: str,
+    n_latents: int,
+    loss_data: dict
+):
+    """Creates model files, losses file, and parameters file.
+
+    Args:
+        dvae: The DVAE model.
+        file_name: The directory name to save all the files to.
+        qpu: The QPU associated with the model.
+        n_latents: The number of latents
+        loss_data: The loss data to save.
+
+    Returns:
+        str: The new class name of the thing to collapse.
+    """
+    dvae.save(file_path=MODEL_PATH / file_name)
+
+    with open(MODEL_PATH / file_name / "parameters.json", "w") as f:
+        json.dump(
+            {
+                "n_latents": n_latents,
+                "qpu": qpu,
+                "num_read": dvae.NUM_READS,
+                "loss_function": dvae.LOSS_FUNCTION,
+                "image_size": dvae.IMAGE_SIZE,
+                "batch_size": dvae.BATCH_SIZE,
+                "dateset_size": dvae.DATASET_SIZE,
+            },
+            f,
+        )
+
+    with open(MODEL_PATH / file_name / "losses.json", "w") as f:
+        json.dump(loss_data, f)
 
 
 @dash.callback(
@@ -265,30 +303,16 @@ def train(
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
-    dvae.save(file_path=MODEL_PATH / file_name)
-
-    with open(MODEL_PATH / file_name / "parameters.json", "w") as f:
-        json.dump(
-            {
-                "n_latents": n_latents,
-                "qpu": qpu,
-                "num_read": dvae.NUM_READS,
-                "loss_function": dvae.LOSS_FUNCTION,
-                "image_size": dvae.IMAGE_SIZE,
-                "batch_size": dvae.BATCH_SIZE,
-                "dateset_size": dvae.DATASET_SIZE,
-            },
-            f,
-        )
-
-    with open(MODEL_PATH / file_name / "losses.json", "w") as f:
-        json.dump(
-            {
-                "mse_losses": dvae._tpar["mse_losses"],
-                "dvae_losses": dvae._tpar["dvae_losses"],
-            },
-            f,
-        )
+    create_model_files(
+        dvae,
+        file_name,
+        qpu,
+        n_latents,
+        {
+            "mse_losses": dvae._tpar["mse_losses"],
+            "dvae_losses": dvae._tpar["dvae_losses"],
+        }
+    )
 
     mse_losses, dvae_losses = dvae._tpar["mse_losses"], dvae._tpar["dvae_losses"]
 
@@ -390,14 +414,20 @@ def generate(
                 f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
             )
 
-        model_file_name += f"_tuned_{n_epochs}"
+        model_file_name += f"_tuned_{n_epochs}_epochs"
 
         loss_data["mse_losses"] += dvae._tpar["mse_losses"]
         loss_data["dvae_losses"] += dvae._tpar["dvae_losses"]
 
         Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
-        with open(MODEL_PATH / model_file_name / "losses.json", "w") as file:
-            json.dump(loss_data, file)
+
+        create_model_files(
+            dvae,
+            model_file_name,
+            model_data["qpu"],
+            model_data["n_latents"],
+            loss_data
+        )
 
     mse_losses, dvae_losses = loss_data["mse_losses"], loss_data["dvae_losses"]
 
