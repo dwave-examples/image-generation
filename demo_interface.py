@@ -240,7 +240,7 @@ def generate_generate_tab() -> html.Div:
                 "model-file-name",
                 generate_options(["No Models Found (please train and save a model)"])
             ),
-            html.P(id="model-details"),
+            html.Div(id="model-details"),
             checklist(
                 "",
                 "tune-params",

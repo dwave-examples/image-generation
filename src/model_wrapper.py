@@ -94,7 +94,11 @@ def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(showticklabels=False)
     fig.update_layout(
-        margin={'t':0,'l':0,'b':0,'r':0}
+        margin={'t': 0,'l': 0,'b': 0,'r': 0},
+        paper_bgcolor="black",
+        plot_bgcolor='black',
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
     )
     return fig
 
