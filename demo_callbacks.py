@@ -38,7 +38,7 @@ def create_model_files(
     qpu: str,
     n_latents: int,
     loss_data: dict
-):
+) -> None:
     """Creates model files, losses file, and parameters file.
 
     Args:
@@ -47,9 +47,6 @@ def create_model_files(
         qpu: The QPU associated with the model.
         n_latents: The number of latents
         loss_data: The loss data to save.
-
-    Returns:
-        str: The new class name of the thing to collapse.
     """
     dvae.save(file_path=MODEL_PATH / file_name)
 
