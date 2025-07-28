@@ -243,6 +243,7 @@ def update_progress(
         (Output("train-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
@@ -340,6 +341,7 @@ def train(
         (Output("generate-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
