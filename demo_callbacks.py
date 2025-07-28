@@ -225,6 +225,30 @@ def update_progress(
 
 
 @dash.callback(
+    Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
+    Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
+    inputs=[
+        Input("cancel-training-button", "n_clicks"),
+        Input("cancel-generation-button", "n_clicks"),
+    ],
+    prevent_initial_call=True,
+)
+def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
+    """Hides progress bar when cancel buttons are clicked.
+
+    Args:
+        cancel_train: The (total) number of times the train cancel button has been clicked.
+        cancel_generate: The (total) number of times the generate cancel button has been clicked.
+
+    Returns:
+        progress-wrapper-className: The classname of the first progress wrapper.
+        progress-wrapper-className: The classname of the second progress wrapper.
+    """
+
+    return "visibility-hidden", "visibility-hidden"
+
+
+@dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
