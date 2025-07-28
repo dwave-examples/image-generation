@@ -38,7 +38,7 @@ def create_model_files(
     qpu: str,
     n_latents: int,
     loss_data: dict
-) -> None:
+):
     """Creates model files, losses file, and parameters file.
 
     Args:
