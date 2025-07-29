@@ -238,6 +238,7 @@ def update_progress(
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-loss", "figure", allow_duplicate=True),
+    Output("fig-original", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("last-trained-model", "data"),
     Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
@@ -287,7 +288,8 @@ def train(
 
             fig-output: The generated image output.
             fig-loss: The graphs showing the MSE Loss and Other Loss.
-            fig-reconstructed: The image comparing the reconstructed image to the original.
+            fig-original: The original image that the model is trying to recreate.
+            fig-reconstructed: The image that is a recreation of the original image.
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
     """
@@ -329,14 +331,15 @@ def train(
     if mse_losses and dvae_losses:
         fig_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
 
-    fig_reconstructed = dvae.generate_reconstucted_samples()
+    fig_original, fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed, file_name, "visibility-hidden"
+    return fig_output, fig_loss, fig_original, fig_reconstructed, file_name, "visibility-hidden"
 
 
 @dash.callback(
     Output("fig-output", "figure"),
     Output("fig-loss", "figure"),
+    Output("fig-original", "figure"),
     Output("fig-reconstructed", "figure"),
     Output("popup", "className", allow_duplicate=True),
     Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
@@ -388,7 +391,9 @@ def generate(
 
             fig-output: The generated image output.
             fig-loss: The graphs showing the MSE Loss and Other Loss.
-            fig-reconstructed: The image comparing the reconstructed image to the original.
+            fig-original: The original image that the model is trying to recreate.
+            fig-reconstructed: The image that is a recreation of the original image.
+            popup-className: The classname of the error popup.
             progress-wrapper-className: The classname of the progress wrapper.
     """
     # load autoencoder model and config
@@ -445,6 +450,6 @@ def generate(
     if mse_losses and dvae_losses:
         fig_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
 
-    fig_reconstructed = dvae.generate_reconstucted_samples()
+    fig_original, fig_reconstructed = dvae.generate_reconstucted_samples()
 
-    return fig_output, fig_loss, fig_reconstructed, "display-none", "visibility-hidden"
+    return fig_output, fig_loss, fig_original, fig_reconstructed, "display-none", "visibility-hidden"
