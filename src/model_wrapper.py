@@ -28,6 +28,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Resize, ToTensor
 from torchvision.utils import make_grid
+from einops import rearrange
 
 from .decoder import Decoder
 from .encoder import Encoder
@@ -417,7 +418,7 @@ class ModelWrapper:
         """Generate reconstructed images from training data.
 
         Returns:
-            go.Figure: Plotly figure.
+            go.Figure: A figure showing the comparison between original and reconstructed digits.
         """
         images_per_row = 16
         # Now we use the trained autoencoder both to generate new samples as well as to
@@ -425,25 +426,21 @@ class ModelWrapper:
         batch = next(iter(self._dataloader))[0]
         self._dvae.eval()
         self._grbm.eval()
+
         reconstructed_batch, _, _ = self._dvae(batch.to(self._device))
+        reconstructed_batch[:, :, :, :, -1] = 1.0
         reconstruction_tensor_for_plot = make_grid(
-            torch.cat(
-                (
-                    batch.cpu(),
-                    torch.ones((images_per_row, 1, self.IMAGE_SIZE, self.IMAGE_SIZE)),
-                    reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu(),
-                ),
-                dim=0,
+            rearrange(
+                [batch.cpu(), reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu()],
+                "i b c h w -> (b i) c h w"
             ),
             nrow=images_per_row,
+            padding=0,
         )
         fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(
-            margin={'t':0,'l':0,'b':0,'r':0}
-        )
+        fig.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
 
         return fig
-
