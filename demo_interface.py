@@ -514,7 +514,7 @@ def create_interface():
                                                         children=[
                                                             html.Div(
                                                                 [
-                                                                    html.H3("Generated Images"),
+                                                                    html.H4("Generated"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-output",
@@ -529,7 +529,7 @@ def create_interface():
                                                             ),
                                                             html.Div(
                                                                 [
-                                                                    html.H3("Reconstructed Images Comparison"),
+                                                                    html.H4("Reconstructed Comparison"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-reconstructed",
@@ -560,9 +560,21 @@ def create_interface():
                                                     html.Div(
                                                         className="graph-wrapper",
                                                         children=[
+                                                            html.H4("Mean Squared Error Loss"),
                                                             html.Div(
                                                                 dcc.Graph(
-                                                                    id="fig-loss",
+                                                                    id="fig-mse-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.H4("Other Loss"),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-other-loss",
                                                                     responsive=True,
                                                                     config={
                                                                         "displayModeBar": False

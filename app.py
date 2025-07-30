@@ -87,4 +87,4 @@ if __name__ == "__main__":
     app.layout = create_interface()
 
     # Run the server
-    app.run(debug=DEBUG)
+    app.run(debug=DEBUG, dev_tools_hot_reload=False)

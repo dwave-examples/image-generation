@@ -389,7 +389,11 @@ class ModelWrapper:
         )
         return fig
 
-    def generate_loss_plot(self, mse_losses: list[float], dvae_losses: list[float]) -> go.Figure:
+    def generate_loss_plot(
+        self,
+        mse_losses: list[float],
+        dvae_losses: list[float]
+    ) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
 
         Args:
@@ -397,22 +401,27 @@ class ModelWrapper:
             dvae_losses: The DVAE training losses to plot.
 
         Returns:
-            go.Figure: Plotly figure.
+            go.Figure: The Mean Squared Error losses plot.
+            go.Figure: The Other losses plot.
         """
-        fig = make_subplots(rows=2, cols=1, subplot_titles=("Mean Squared Error Loss (MSE)", "Other Loss"))
+        fig_mse = go.Figure()
+        fig_other = go.Figure()
 
-        fig.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=mse_losses), row=1, col=1)
-        fig.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses), row=2, col=1)
+        fig_mse.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=mse_losses))
+        fig_other.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses))
 
         # Update xaxis properties
-        fig.update_xaxes(title_text="Batch", row=1, col=1)
-        fig.update_yaxes(title_text="Loss", row=1, col=1)
+        fig_mse.update_xaxes(title_text="Batch")
+        fig_mse.update_yaxes(title_text="Loss")
 
         # Update yaxis properties
-        fig.update_xaxes(title_text="Batch", row=2, col=1)
-        fig.update_yaxes(title_text="Loss", row=2, col=1)
+        fig_other.update_xaxes(title_text="Batch")
+        fig_other.update_yaxes(title_text="Loss")
 
-        return fig
+        fig_mse.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
+        fig_other.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
+
+        return fig_mse, fig_other
 
     def generate_reconstucted_samples(self) -> go.Figure:
         """Generate reconstructed images from training data.
