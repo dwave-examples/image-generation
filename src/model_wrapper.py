@@ -413,12 +413,11 @@ class ModelWrapper:
 
         return fig
 
-    def generate_reconstucted_samples(self) -> tuple[go.Figure, go.Figure]:
+    def generate_reconstucted_samples(self) -> go.Figure:
         """Generate reconstructed images from training data.
 
         Returns:
-            go.Figure: Plotly figure of the original images.
-            go.Figure: Plotly figure of the reconstructed images.
+            go.Figure: Plotly figure.
         """
         images_per_row = 16
         # Now we use the trained autoencoder both to generate new samples as well as to
@@ -427,20 +426,24 @@ class ModelWrapper:
         self._dvae.eval()
         self._grbm.eval()
         reconstructed_batch, _, _ = self._dvae(batch.to(self._device))
-        original = make_grid(batch.cpu(), nrow=images_per_row)
-        reconstructed = make_grid(
-            reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu(),
+        reconstruction_tensor_for_plot = make_grid(
+            torch.cat(
+                (
+                    batch.cpu(),
+                    torch.ones((images_per_row, 1, self.IMAGE_SIZE, self.IMAGE_SIZE)),
+                    reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu(),
+                ),
+                dim=0,
+            ),
             nrow=images_per_row,
         )
-        fig = px.imshow(original.permute(1, 2, 0))
-        fig_reconstruct = px.imshow(reconstructed.permute(1, 2, 0))
+        fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
-        fig_reconstruct.update_xaxes(showticklabels=False)
-        fig_reconstruct.update_yaxes(showticklabels=False)
-        fig_reconstruct.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
+        fig.update_layout(
+            margin={'t':0,'l':0,'b':0,'r':0}
+        )
 
-        return fig, fig_reconstruct
+        return fig
 

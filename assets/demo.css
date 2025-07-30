@@ -102,10 +102,6 @@ div.left-column .tab {
     width: calc(45vw - var(--left-col-width)/2);
 }
 
-.reconstructed-comparison .graph {
-    height: calc((45vw - var(--left-col-width) / 2) / 2);;
-}
-
 progress {
     height: 2rem;
     width: 100%;
@@ -167,8 +163,4 @@ progress::-webkit-progress-bar {
 
 .model-details p {
     margin-bottom: 0;
-}
-
-h4 {
-    margin: 0.8rem 0;
 }

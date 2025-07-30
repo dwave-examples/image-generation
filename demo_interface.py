@@ -514,7 +514,7 @@ def create_interface():
                                                         children=[
                                                             html.Div(
                                                                 [
-                                                                    html.H4("Generated"),
+                                                                    html.H3("Generated Images"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-output",
@@ -529,18 +529,7 @@ def create_interface():
                                                             ),
                                                             html.Div(
                                                                 [
-                                                                    html.H4("Original"),
-                                                                    html.Div(
-                                                                        dcc.Graph(
-                                                                            id="fig-original",
-                                                                            responsive=True,
-                                                                            config={
-                                                                                "displayModeBar": False
-                                                                            },
-                                                                        ),
-                                                                        className="graph",
-                                                                    ),
-                                                                    html.H4("Reconstructed"),
+                                                                    html.H3("Reconstructed Images Comparison"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-reconstructed",
@@ -552,7 +541,6 @@ def create_interface():
                                                                         className="graph",
                                                                     )
                                                                 ],
-                                                                className="reconstructed-comparison"
                                                             ),
                                                         ],
                                                     ),
