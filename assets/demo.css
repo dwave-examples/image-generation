@@ -104,6 +104,7 @@ div.left-column .tab {
 
 .graph-wrapper-flex .graph {
     width: calc(45vw - var(--left-col-width)/2);
+    height: calc(45vw - var(--left-col-width)/2);
 }
 
 progress {

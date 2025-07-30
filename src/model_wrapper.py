@@ -127,7 +127,6 @@ class ModelWrapper:
         self.sampler = None
         self.sampler_kwargs = None
 
-        # self.optimizer = None
         self._dvae_optimizer = None
         self._grbm_optimizer = None
 

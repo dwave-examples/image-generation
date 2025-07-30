@@ -33,7 +33,7 @@ MODEL_PATH = Path("models")
 
 
 def create_model_files(
-    dvae: DiscreteAutoEncoder,
+    model: DiscreteAutoEncoder,
     file_name: str,
     qpu: str,
     n_latents: int,
@@ -43,17 +43,14 @@ def create_model_files(
     """Creates model files, losses file, and parameters file.
 
     Args:
-        dvae: The DVAE model.
+        model: The DVAE model.
         file_name: The directory name to save all the files to.
         qpu: The QPU associated with the model.
         n_latents: The number of latents.
         n_epochs: The number of epochs.
         loss_data: The loss data to save.
-
-    Returns:
-        str: The new class name of the thing to collapse.
     """
-    dvae.save(file_path=MODEL_PATH / file_name)
+    model.save(file_path=MODEL_PATH / file_name)
 
     with open(MODEL_PATH / file_name / "parameters.json", "w") as f:
         json.dump(
@@ -61,11 +58,11 @@ def create_model_files(
                 "n_latents": n_latents,
                 "n_epochs": n_epochs,
                 "qpu": qpu,
-                "num_read": dvae.NUM_READS,
-                "loss_function": dvae.LOSS_FUNCTION,
-                "image_size": dvae.IMAGE_SIZE,
-                "batch_size": dvae.BATCH_SIZE,
-                "dateset_size": dvae.DATASET_SIZE,
+                "num_read": model.NUM_READS,
+                "loss_function": model.LOSS_FUNCTION,
+                "image_size": model.IMAGE_SIZE,
+                "batch_size": model.BATCH_SIZE,
+                "dateset_size": model.DATASET_SIZE,
             },
             f,
         )
@@ -236,6 +233,30 @@ def update_progress(
 
 
 @dash.callback(
+    Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
+    Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
+    inputs=[
+        Input("cancel-training-button", "n_clicks"),
+        Input("cancel-generation-button", "n_clicks"),
+    ],
+    prevent_initial_call=True,
+)
+def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
+    """Hides progress bar when cancel buttons are clicked.
+
+    Args:
+        cancel_train: The (total) number of times the train cancel button has been clicked.
+        cancel_generate: The (total) number of times the generate cancel button has been clicked.
+
+    Returns:
+        progress-wrapper-className: The classname of the first progress wrapper.
+        progress-wrapper-className: The classname of the second progress wrapper.
+    """
+
+    return "visibility-hidden", "visibility-hidden"
+
+
+@dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
     Output("fig-other-loss", "figure", allow_duplicate=True),
@@ -255,6 +276,7 @@ def update_progress(
         (Output("train-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
@@ -293,45 +315,45 @@ def train(
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
     """
-    dvae = ModelWrapper(qpu=qpu, n_latents=n_latents)
+    model = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
-    dvae.train_init(n_epochs)
+    model.train_init(n_epochs)
 
     for epoch in range(n_epochs):
         start_time = time.perf_counter()
         print(f"Starting epoch {epoch + 1}/{n_epochs}")
 
-        total = len(dvae._dataloader)
-        for i, batch in enumerate(dvae._dataloader):
+        total = len(model._dataloader)
+        for i, batch in enumerate(model._dataloader):
             set_progress((str(total * epoch + i), str(total * n_epochs)))
-            mse_loss = dvae.step(batch, epoch)
+            mse_loss = model.step(batch, epoch)
 
         print(
             f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
-            f'Learning rate DVAE: {dvae._tpar["dvae_lr_schedule"][dvae._tpar["opt_step"]]:.3E} '
-            f'Learning rate GRBM: {dvae._tpar["grbm_lr_schedule"][dvae._tpar["opt_step"]]:.3E} '
+            f'Learning rate DVAE: {model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]:.3E} '
+            f'Learning rate GRBM: {model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]:.3E} '
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
     create_model_files(
-        dvae,
+        model,
         file_name,
         qpu,
         n_latents,
         n_epochs,
         {
-            "mse_losses": dvae._tpar["mse_losses"],
-            "dvae_losses": dvae._tpar["dvae_losses"],
+            "mse_losses": model._tpar["mse_losses"],
+            "dvae_losses": model._tpar["dvae_losses"],
         }
     )
 
-    mse_losses, dvae_losses = dvae._tpar["mse_losses"], dvae._tpar["dvae_losses"]
+    mse_losses, dvae_losses = model._tpar["mse_losses"], model._tpar["dvae_losses"]
 
-    fig_output = dvae.generate_output()
+    fig_output = model.generate_output()
     if mse_losses and dvae_losses:
-        fig_mse_loss, fig_other_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
+        fig_mse_loss, fig_other_loss = model.generate_loss_plot(mse_losses, dvae_losses)
 
-    fig_reconstructed = dvae.generate_reconstucted_samples()
+    fig_reconstructed = model.generate_reconstucted_samples()
 
     return fig_output, fig_mse_loss, fig_other_loss, fig_reconstructed, file_name, "visibility-hidden"
 
@@ -355,6 +377,7 @@ def train(
         (Output("generate-button", "className"), "display-none", ""),
         (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
+        (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
@@ -404,38 +427,38 @@ def generate(
     if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
         return dash.no_update, dash.no_update, dash.no_update, "", "visibility-hidden"
 
-    dvae = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
-    dvae.load(file_path=MODEL_PATH / model_file_name)
+    model = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
+    model.load(file_path=MODEL_PATH / model_file_name)
 
     if tune_parameters:
-        dvae.train_init(n_epochs)
+        model.train_init(n_epochs)
 
         for epoch in range(n_epochs):
             start_time = time.perf_counter()
             print(f"Starting epoch {epoch + 1}/{n_epochs}")
 
-            total = len(dvae._dataloader)
-            for i, batch in enumerate(dvae._dataloader):
+            total = len(model._dataloader)
+            for i, batch in enumerate(model._dataloader):
                 print(f"{i}/{total}")
                 set_progress((str(total * epoch + i), str(total * n_epochs)))
-                mse_loss = dvae.step(batch, epoch)
+                mse_loss = model.step(batch, epoch)
 
             print(
                 f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
-                f'Learning rate DVAE: {dvae._tpar["dvae_lr_schedule"][dvae._tpar["opt_step"]]:.3E} '
-                f'Learning rate GRBM: {dvae._tpar["grbm_lr_schedule"][dvae._tpar["opt_step"]]:.3E} '
+                f'Learning rate DVAE: {model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]:.3E} '
+                f'Learning rate GRBM: {model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]:.3E} '
                 f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
             )
 
         model_file_name += f"_tuned_{n_epochs}_epochs"
 
-        loss_data["mse_losses"] += dvae._tpar["mse_losses"]
-        loss_data["dvae_losses"] += dvae._tpar["dvae_losses"]
+        loss_data["mse_losses"] += model._tpar["mse_losses"]
+        loss_data["dvae_losses"] += model._tpar["dvae_losses"]
 
         Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
 
         create_model_files(
-            dvae,
+            model,
             model_file_name,
             model_data["qpu"],
             model_data["n_latents"],
@@ -445,10 +468,10 @@ def generate(
 
     mse_losses, dvae_losses = loss_data["mse_losses"], loss_data["dvae_losses"]
 
-    fig_output = dvae.generate_output()
+    fig_output = model.generate_output()
     if mse_losses and dvae_losses:
-        fig_mse_loss, fig_other_loss = dvae.generate_loss_plot(mse_losses, dvae_losses)
+        fig_mse_loss, fig_other_loss = model.generate_loss_plot(mse_losses, dvae_losses)
 
-    fig_reconstructed = dvae.generate_reconstucted_samples()
+    fig_reconstructed = model.generate_reconstucted_samples()
 
     return fig_output, fig_mse_loss, fig_other_loss, fig_reconstructed, "display-none", "visibility-hidden"
