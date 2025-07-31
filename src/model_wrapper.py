@@ -23,7 +23,6 @@ import yaml
 from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 from plotly import graph_objects as go
-from plotly.subplots import make_subplots
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Resize, ToTensor
@@ -121,7 +120,6 @@ class ModelWrapper:
 
         self._dvae = None
         self._grbm = None
-        self._prefactor = None
 
         self._device = None
         self.sampler = None
@@ -155,8 +153,6 @@ class ModelWrapper:
         torch.save(self._dvae.state_dict(), file_path / "dvae.pth")
         # Save the RBM
         torch.save(self._grbm.state_dict(), file_path / "grbm.pth")
-        # Save the prefactor
-        torch.save(self._prefactor, file_path / "prefactor.pth")
 
     def load(self, file_path: str) -> None:
         """Load and reconstruct autoencoder from saved models and configs.
@@ -170,7 +166,6 @@ class ModelWrapper:
         # currently assuming config and and model have same base name
         self._dvae.load_state_dict(torch.load(file_path / "dvae.pth"))
         self._grbm.load_state_dict(torch.load(file_path / "grbm.pth"))
-        self._prefactor = torch.load(file_path / "prefactor.pth", weights_only=False)
 
     def setup(self) -> None:
         """Initial setup for the VAE and GRBM."""
@@ -269,10 +264,7 @@ class ModelWrapper:
 
         self._tpar["mse_losses"] = []
         self._tpar["dvae_losses"] = []
-        self._prefactor = self.INITIAL_PREFACTOR
-        self._tpar["last_prefactor"] = self._prefactor
         self._tpar["sample_set"] = None
-        self._tpar["alpha"] = 2 / (self.WINDOW_LENGTH + 1)
 
         self._tpar["init_done"] = True
 
@@ -305,7 +297,7 @@ class ModelWrapper:
             )
             self._tpar["mse_losses"].append(mse_loss.item())
 
-            dvae_loss = mmd_loss(
+            _mmd_loss = mmd_loss(
                 spins=spins,
                 kernel=self._tpar["kernel"],
                 grbm=self._grbm,
@@ -313,10 +305,10 @@ class ModelWrapper:
                 sampler_kwargs=self.sampler_kwargs,
                 linear_range=self.linear_range,
                 quadratic_range=self.quadratic_range,
-                prefactor=self._prefactor,
+                prefactor=self.PREFACTOR,
             )
 
-            dvae_loss = mse_loss + dvae_loss
+            dvae_loss = mse_loss + _mmd_loss
 
             self._tpar["dvae_losses"].append(dvae_loss.item())
 
@@ -326,26 +318,19 @@ class ModelWrapper:
         # train boltzmann machine
         if train_grbm(self._tpar["opt_step"], epoch):
             self._grbm_optimizer.zero_grad()
-            self._prefactor, grbm_loss, self._tpar["sample_set"] = nll_loss(
+            grbm_loss, self._tpar["sample_set"] = nll_loss(
                 spins=spins.detach(),
                 grbm=self._grbm,
                 sampler=self.sampler,
                 sampler_kwargs=self.sampler_kwargs,
                 linear_range=self.linear_range,
                 quadratic_range=self.quadratic_range,
-                prefactor=self._prefactor,
-                measure_prefactor=self.MEASURE_PREFACTOR,
+                prefactor=self.PREFACTOR,
                 persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
                 sample_set=self._tpar["sample_set"],
             )
             grbm_loss.backward()
             self._grbm_optimizer.step()
-
-        self._prefactor = (
-            self._tpar["alpha"] * self._prefactor
-            + (1 - self._tpar["alpha"]) * self._tpar["last_prefactor"]
-        )
-        self._tpar["last_prefactor"] = self._prefactor
 
         # update learning rate
         for param_group in self._dvae_optimizer.param_groups:
@@ -369,7 +354,7 @@ class ModelWrapper:
         with torch.no_grad():
             samples = self._grbm.sample(
                 self.sampler,
-                prefactor=self._prefactor,
+                prefactor=self.PREFACTOR,
                 device=self._device,
                 linear_range=self.linear_range,
                 quadratic_range=self.quadratic_range,

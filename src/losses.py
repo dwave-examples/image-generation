@@ -13,21 +13,23 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import torch
 from dimod import Sampler, SampleSet
-from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 
 if TYPE_CHECKING:
+    from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
     from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
 class RadialBasisFunction(torch.nn.Module):
+    """TODO"""
+
     def __init__(
         self,
         num_features: int,
-        mul_factor: int | float = 2.0,
+        mul_factor: Union[int, float] = 2.0,
         bandwidth: Optional[float] = None,
     ):
         super().__init__()
@@ -38,7 +40,8 @@ class RadialBasisFunction(torch.nn.Module):
     def get_bandwidth(
         self,
         l2_distance_matrix: Optional[torch.Tensor] = None
-    ) -> torch.Tensor | float:
+    ) -> Union[torch.Tensor, float]:
+        """TODO"""
         if self.bandwidth is None:
             assert l2_distance_matrix is not None
 
@@ -65,6 +68,7 @@ def mmd_loss(
     quadratic_range: tuple[float, float],
     prefactor: float,
 ) -> float:
+    """TODO"""
     with torch.no_grad():
         samples = grbm.sample(
             sampler,
@@ -96,24 +100,21 @@ def nll_loss(
     linear_range: tuple[float, float],
     quadratic_range: tuple[float, float],
     prefactor: float,
-    measure_prefactor: bool,
     persistent_qpu_sample_helper: PersistentQPUSampleHelper,
     sample_set: Optional[SampleSet] = None,
 ) -> tuple[float, torch.Tensor, SampleSet]:
-    prefactor, sample_set = persistent_qpu_sample_helper.find_prefactor(
+    """TODO"""
+    sample_set = persistent_qpu_sample_helper.sample(
         prefactor,
         grbm,
         sampler,
         sampler_kwargs,
         linear_range,
         quadratic_range,
-        measure_prefactor=measure_prefactor,
-        resample=False,
-        reset_deque=True,
     )
 
     samples = grbm.sampleset_to_tensor(sample_set, device=spins.device)
     spins = spins.reshape(-1, spins.shape[-1])
     nll = torch.mean(grbm(spins)) - torch.mean(grbm(samples))
 
-    return prefactor, nll, sample_set
+    return nll, sample_set
