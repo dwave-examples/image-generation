@@ -158,6 +158,32 @@ def radio(label: str, id: str, options: list, value: int, inline: bool = True) -
     )
 
 
+def generate_model_data(model_data: dict) -> html.Div:
+    """Display model data.
+
+    Returns:
+        html.Div: A Div containing the model data associated with the selected model.
+    """
+
+    return html.Div(
+        children=[
+            html.Div(
+                [
+                    html.P([html.B("QPU: "), model_data["qpu"]]),
+                    html.P([html.B("Epochs: "), model_data["n_epochs"]]),
+                ]
+            ),
+            html.Div(
+                [
+                    html.P([html.B("Latents: "), model_data["n_latents"]]),
+                    html.P([html.B("Batch Size: "), model_data["batch_size"]]),
+                ]
+            )
+        ],
+        className="display-flex model-details"
+    )
+
+
 def generate_options(options_list: list) -> list[dict]:
     """Generates options for dropdowns, checklists, radios, etc."""
     return [{"label": label, "value": i} for i, label in enumerate(options_list)]
@@ -214,6 +240,7 @@ def generate_generate_tab() -> html.Div:
                 "model-file-name",
                 generate_options(["No Models Found (please train and save a model)"])
             ),
+            html.Div(id="model-details"),
             checklist(
                 "",
                 "tune-params",
@@ -487,7 +514,7 @@ def create_interface():
                                                         children=[
                                                             html.Div(
                                                                 [
-                                                                    html.H3("Generated Images"),
+                                                                    html.H4("Generated"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-output",
@@ -502,7 +529,7 @@ def create_interface():
                                                             ),
                                                             html.Div(
                                                                 [
-                                                                    html.H3("Reconstructed Images Comparison"),
+                                                                    html.H4("Reconstructed Comparison"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-reconstructed",
@@ -533,9 +560,21 @@ def create_interface():
                                                     html.Div(
                                                         className="graph-wrapper",
                                                         children=[
+                                                            html.H4("Mean Squared Error Loss"),
                                                             html.Div(
                                                                 dcc.Graph(
-                                                                    id="fig-loss",
+                                                                    id="fig-mse-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.H4("Other Loss"),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-other-loss",
                                                                     responsive=True,
                                                                     config={
                                                                         "displayModeBar": False
