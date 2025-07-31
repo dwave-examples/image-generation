@@ -18,6 +18,8 @@ import torch
 
 
 class Encoder(torch.nn.Module):
+    """TODO"""
+
     def __init__(self, n_latents: int):
         super().__init__()
         channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
@@ -47,25 +49,3 @@ class Encoder(torch.nn.Module):
         x = self.projection(x)
 
         return self.flatten(x)  # .clip(-2.8, 2.8)
-
-
-class EncoderV2(torch.nn.Module):
-    def __init__(self, n_latents: int):
-        super().__init__()
-        channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
-        layers = []
-
-        for i in range(len(channels) - 1):
-            layers.append(
-                torch.nn.Conv2d(channels[i], channels[i + 1], kernel_size=3, stride=2, padding=1)
-            )
-            layers.append(torch.nn.BatchNorm2d(channels[i + 1]))
-            layers.append(torch.nn.LeakyReLU())
-
-        layers = layers[:-1]  # Remove the last LeakyReLU
-        self.conv = torch.nn.Sequential(*layers)
-        self.flatten = torch.nn.Flatten()
-        self.linear = torch.nn.Linear(2 * 2 * channels[-1], n_latents)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.linear(self.flatten(self.conv(x)))

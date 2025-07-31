@@ -23,6 +23,7 @@ from pathlib import Path
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
+from demo_configs import SHARPEN_OUTPUT
 from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
 from plotly import graph_objects as go
 
@@ -57,6 +58,7 @@ def create_model_files(
             {
                 "n_latents": n_latents,
                 "n_epochs": n_epochs,
+                "prefactor": model.PREFACTOR,
                 "qpu": qpu,
                 "num_read": model.NUM_READS,
                 "loss_function": model.LOSS_FUNCTION,
@@ -310,7 +312,7 @@ def train(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the Other Loss.
+            fig-other-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
@@ -342,20 +344,17 @@ def train(
         n_latents,
         n_epochs,
         {
-            "mse_losses": model._tpar["mse_losses"],
-            "dvae_losses": model._tpar["dvae_losses"],
+            "mse_losses": model.losses["mse_losses"],
+            "dvae_losses": model.losses["dvae_losses"],
         }
     )
 
-    mse_losses, dvae_losses = model._tpar["mse_losses"], model._tpar["dvae_losses"]
+    fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
+    fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
 
-    fig_output = model.generate_output()
-    if mse_losses and dvae_losses:
-        fig_mse_loss, fig_other_loss = model.generate_loss_plot(mse_losses, dvae_losses)
+    fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
-    fig_reconstructed = model.generate_reconstucted_samples()
-
-    return fig_output, fig_mse_loss, fig_other_loss, fig_reconstructed, file_name, "visibility-hidden"
+    return fig_output, fig_mse_loss, fig_dvae_loss, fig_reconstructed, file_name, "visibility-hidden"
 
 
 @dash.callback(
@@ -414,7 +413,7 @@ def generate(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the Other Loss.
+            fig-other-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             progress-wrapper-className: The classname of the progress wrapper.
     """
@@ -452,8 +451,8 @@ def generate(
 
         model_file_name += f"_tuned_{n_epochs}_epochs"
 
-        loss_data["mse_losses"] += model._tpar["mse_losses"]
-        loss_data["dvae_losses"] += model._tpar["dvae_losses"]
+        loss_data["mse_losses"] += model.losses["mse_losses"]
+        loss_data["dvae_losses"] += model.losses["dvae_losses"]
 
         Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
 
@@ -466,12 +465,11 @@ def generate(
             loss_data
         )
 
-    mse_losses, dvae_losses = loss_data["mse_losses"], loss_data["dvae_losses"]
+    fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
 
-    fig_output = model.generate_output()
-    if mse_losses and dvae_losses:
-        fig_mse_loss, fig_other_loss = model.generate_loss_plot(mse_losses, dvae_losses)
+    model.losses = loss_data
+    fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
 
-    fig_reconstructed = model.generate_reconstucted_samples()
+    fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
-    return fig_output, fig_mse_loss, fig_other_loss, fig_reconstructed, "display-none", "visibility-hidden"
+    return fig_output, fig_mse_loss, fig_dvae_loss, fig_reconstructed, "display-none", "visibility-hidden"

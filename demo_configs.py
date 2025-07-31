@@ -48,3 +48,5 @@ SLIDER_EPOCHS = {
     "step": 1,
     "value": 10,
 }
+
+SHARPEN_OUTPUT = False

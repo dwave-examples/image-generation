@@ -114,7 +114,7 @@ class ModelWrapper:
         n_latents: The number of latent variables in the model.
     """
 
-    def __init__(self, qpu: str, n_latents: Optional[int] = None) -> None:
+    def __init__(self, qpu: str, n_latents: Optional[int] = None, training_parameter_file: str = None) -> None:
         self.qpu: str = qpu
         self.n_latents: int = n_latents
 
@@ -130,7 +130,12 @@ class ModelWrapper:
 
         self._dataloader = None
 
-        with open("src/training_parameters.yaml", "r") as f:
+        self.losses = {"mse_losses": [], "dvae_losses": []}
+
+        if not training_parameter_file:
+            training_parameter_file = "src/training_parameters.yaml"
+
+        with open(training_parameter_file, "r") as f:
             self._params = yaml.safe_load(f)
 
     def __getattr__(self, name: str):
@@ -228,6 +233,9 @@ class ModelWrapper:
         Args:
             n_epochs: Number of epochs to train. Used to determine the learning rate schedules.
         """
+        self.losses["mse_losses"].clear()
+        self.losses["dvae_losses"].clear()
+
         # set the random seed for reproducibility
         torch.manual_seed(self.RANDOM_SEED)
 
@@ -262,8 +270,6 @@ class ModelWrapper:
         # use for self.LOSS_FUNCTION == "mmd":
         self._tpar["kernel"] = RadialBasisFunction(num_features=7).to(self._device)
 
-        self._tpar["mse_losses"] = []
-        self._tpar["dvae_losses"] = []
         self._tpar["sample_set"] = None
 
         self._tpar["init_done"] = True
@@ -295,7 +301,7 @@ class ModelWrapper:
                 reconstructed_images,
                 images.unsqueeze(1).repeat(1, self.N_REPLICAS, 1, 1, 1),
             )
-            self._tpar["mse_losses"].append(mse_loss.item())
+            self.losses["mse_losses"].append(mse_loss.item())
 
             _mmd_loss = mmd_loss(
                 spins=spins,
@@ -310,7 +316,7 @@ class ModelWrapper:
 
             dvae_loss = mse_loss + _mmd_loss
 
-            self._tpar["dvae_losses"].append(dvae_loss.item())
+            self.losses["dvae_losses"].append(dvae_loss.item())
 
             dvae_loss.backward()
             self._dvae_optimizer.step()
@@ -341,8 +347,11 @@ class ModelWrapper:
 
         return mse_loss
 
-    def generate_output(self) -> go.Figure:
+    def generate_output(self, sharpen: bool = False) -> go.Figure:
         """Generate output images from trained model.
+
+        Args:
+            Whether to sharpen the output images by binarization.
 
         Returns:
             go.Figure: Plotly figure.
@@ -362,6 +371,9 @@ class ModelWrapper:
             )
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
+        if sharpen:
+            images = (images > 0.5).float()
+
         generation_tensor_for_plot = make_grid(images, nrow=images_per_row)
 
         fig = px.imshow(generation_tensor_for_plot.permute(1, 2, 0))
@@ -373,21 +385,16 @@ class ModelWrapper:
         )
         return fig
 
-    def generate_loss_plot(
-        self,
-        mse_losses: list[float],
-        dvae_losses: list[float]
-    ) -> tuple[go.Figure, go.Figure]:
+    def generate_loss_plot(self) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
-
-        Args:
-            mse_losses: The MSE losses to plot.
-            dvae_losses: The DVAE training losses to plot.
 
         Returns:
             go.Figure: The Mean Squared Error losses plot.
-            go.Figure: The Other losses plot.
+            go.Figure: The total losses plot.
         """
+        mse_losses = self.losses["mse_losses"]
+        dvae_losses = self.losses["dvae_losses"]
+
         fig_mse = go.Figure()
         fig_other = go.Figure()
 
@@ -407,8 +414,11 @@ class ModelWrapper:
 
         return fig_mse, fig_other
 
-    def generate_reconstucted_samples(self) -> go.Figure:
+    def generate_reconstucted_samples(self, sharpen: bool = False) -> go.Figure:
         """Generate reconstructed images from training data.
+
+        Args:
+            Whether to sharpen the output images by binarization.
 
         Returns:
             go.Figure: A figure showing the comparison between original and reconstructed digits.
@@ -430,6 +440,10 @@ class ModelWrapper:
             nrow=images_per_row,
             padding=0,
         )
+
+        if sharpen:
+            reconstruction_tensor_for_plot = (reconstruction_tensor_for_plot > 0.5).float()
+
         fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
 
         fig.update_xaxes(showticklabels=False)

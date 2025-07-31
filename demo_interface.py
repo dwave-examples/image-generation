@@ -560,7 +560,7 @@ def create_interface():
                                                     html.Div(
                                                         className="graph-wrapper",
                                                         children=[
-                                                            html.H4("Mean Squared Error Loss"),
+                                                            html.H4("Mean Squared Error Loss (MSE)"),
                                                             html.Div(
                                                                 dcc.Graph(
                                                                     id="fig-mse-loss",
@@ -571,7 +571,7 @@ def create_interface():
                                                                 ),
                                                                 className="graph",
                                                             ),
-                                                            html.H4("Other Loss"),
+                                                            html.H4("Total Loss (MSE + MMD)"),
                                                             html.Div(
                                                                 dcc.Graph(
                                                                     id="fig-other-loss",
