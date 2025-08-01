@@ -39,7 +39,7 @@ def push_to_deque(
 
 
 class PersistentQPUSampleHelper:
-    """TODO"""
+    """A QPU wrapper that caches/reuses a sample."""
 
     def __init__(self, max_deque_size: int, iterations_before_resampling: int):
         self.current_deque_size = 0
@@ -57,7 +57,7 @@ class PersistentQPUSampleHelper:
         linear_range: tuple[float, float],
         quadratic_range: tuple[float, float],
     ) -> tuple[float, SampleSet]:
-        """TODO"""
+        """Sample from the graph-restricted Boltzmann machine."""
         self.current_deque_size = 0
         self.iterations_since_last_resampling = 0
         self.deque = None

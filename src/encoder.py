@@ -18,7 +18,7 @@ import torch
 
 
 class Encoder(torch.nn.Module):
-    """TODO"""
+    """An encoder network that maps image data to latent spinstrings."""
 
     def __init__(self, n_latents: int):
         super().__init__()

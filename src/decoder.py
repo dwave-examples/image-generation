@@ -16,7 +16,7 @@ import torch
 
 
 class Decoder(torch.nn.Module):
-    """TODO"""
+    """A decoder network that maps latent variables to images."""
 
     def __init__(self, n_latents: int):
         super().__init__()
