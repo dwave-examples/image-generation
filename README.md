@@ -96,7 +96,7 @@ We minimize the following loss function:
 ![eq1](static/eq1.png)
 
 whose terms correspond to a reconstruction loss (MSE), a distribution distance loss (MMD)
-and a likelihood loss (NLL).
+and a likelihood loss (NLL). Note the NLL term is only optimized with respect to the QPU parameters.
 
 ### Reconstruction Loss
 
@@ -111,7 +111,7 @@ images.
 
 ### Distribution Distance Loss
 
-To ensure that the latent representation of data is aligned to that of the samples from the QPU,
+To ensure that the latent representation of data are aligned to that of the samples from the QPU,
 we use the maximum mean discrepancy distance, which uses samples to estimate the distance between
 two distributions. To measure the (squared) maximum mean discrepancy (&eta;\_k) between two
 distributions _p_ and _q_, a kernel, _k_, is used:
@@ -133,7 +133,7 @@ _&eta;\_k(encoded data, QPU)_.
 Finally, we introduce a loss term that trains the QPU parameters to match the distribution of
 encoded data in the latent space. For this, we train the couplings _(\{J\_ij\})_ and biases
 _(\{h\_i\})_ of the QPU and train the QPU so that the encoded data in the latent space is distributed
-according to a Boltzmann distribution defined by the QPU parameters, that is we aim for:
+according to an approximate Boltzmann distribution defined by the QPU parameters, that is we aim for:
 
 ![eq5](static/eq5.png)
 
@@ -165,7 +165,7 @@ randomness source, when sampling spin variables from logits, to sampling spin va
 noise. The logits act as deterministic information in the model, so that any expectation value on
 the random spin variables is taken with respect to the Gumbel noise.
 
-## Code overview
+## Code Overview
 
 The important pieces showcased in this demo are the discrete variational autoencoder and
 the `GraphRestrictedBoltzmannMachine` prior.
@@ -180,10 +180,7 @@ variables.
 
 The graph-restricted Boltzmann machine is defined by:
 ```python
-grbm = GraphRestrictedBoltzmannMachine(
-    nodes,
-    edges,
-)
+grbm = GraphRestrictedBoltzmannMachine(nodes, edges)
 ```
 where `nodes` and `edges` correspond to the graph that is to be embedded on the QPU.
 
