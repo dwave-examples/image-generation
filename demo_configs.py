@@ -22,26 +22,33 @@ THEME_COLOR_SECONDARY = "#2A7DE1"  # D-Wave blue default #2A7DE1
 
 THUMBNAIL = "static/dwave_logo.svg"
 
-APP_TITLE = "Demo Name"
-MAIN_HEADER = "Demo Name"
+APP_TITLE = "ML Image Generation (MNIST)"
+MAIN_HEADER = "ML Image Generation (MNIST)"
 DESCRIPTION = """\
-This is a Dash template for new examples. It includes some basic settings, tabs, and styling.
+Machine Learning MNIST training and image generation using a Discrete Variational
+Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 """
+
+DEFAULT_QPU = "Advantage2_system1.4"
 
 #######################################
 # Sliders, buttons and option entries #
 #######################################
 
-# an example slider
-SLIDER = {
-    "min": 1,
-    "max": 10,
-    "step": 1,
-    "value": 5,
+SLIDER_LATENTS = {
+    "min": 128,
+    "max": 512,
+    "step": 64,
+    "value": 256,
 }
 
-NOISE = {
-    "min": 0,
-    "max": 1,
-    "step": 0.01,
+SLIDER_EPOCHS = {
+    "min": 1,
+    "max": 60,
+    "step": 1,
+    "value": 10,
 }
+
+SHARPEN_OUTPUT = False
+UPPER_THRESHOLD = 0.6
+LOWER_THRESHOLD = 0.4

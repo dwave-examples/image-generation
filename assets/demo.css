@@ -21,11 +21,12 @@ custom CSS can be added below.
 *******************************************************************/
 
 .tab-content-results {
-    padding: 0 3rem;
+    padding: 3rem 3rem 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
+    box-sizing: border-box;
 }
 
 .solution-stats-table td:nth-child(2n) {
@@ -72,4 +73,103 @@ div.left-column .tab-content {
 div.left-column .tab {
     padding: 1rem;
     border: 1px solid #d6d6d6;
+}
+
+.graph {
+    height: 100%;
+}
+
+.graph-wrapper {
+    height: 40%;
+}
+
+.settings {
+    margin-top: 0;
+}
+
+#setting-tabs-parent .tab-content {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
+
+.button-group {
+    margin-bottom: 2rem;
+}
+
+.graph-wrapper-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.graph-wrapper-flex .graph {
+    width: calc(45vw - var(--left-col-width)/2);
+    height: calc(45vw - var(--left-col-width)/2);
+}
+
+progress {
+    height: 2rem;
+    width: 100%;
+}
+
+progress::-webkit-progress-bar {
+    background-color: var(--theme);
+}
+
+.display-flex {
+    display: flex;
+    justify-content: space-between;
+}
+
+.visibility-hidden {
+    visibility: hidden;
+}
+
+#popup {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.4);
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 10;
+}
+
+#popup > div {
+    position: absolute;
+    background-color: white;
+    left: calc(50% - 20rem);
+    top: 40%;
+    z-index: 10;
+    padding: 3rem;
+    width: 40rem;
+    border-radius: 1rem;
+    border: 4px solid var(--red-light);
+}
+
+#popup-toggle {
+    position: absolute;
+    right: 0;
+    top: -1.5rem;
+    font-size: 3rem;
+    color: var(--red-light);
+    cursor: pointer;
+    padding: 1rem;
+    transition: color 0.2s ease-in-out;
+}
+
+#popup-toggle:hover {
+    color: var(--red-dark);
+}
+
+.model-details {
+    margin-top: 1rem;
+}
+
+.model-details p {
+    margin-bottom: 0;
+}
+
+.checklist label {
+    font-weight: 500;
 }

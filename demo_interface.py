@@ -14,17 +14,45 @@
 
 """This file stores the Dash HTML layout for the app."""
 from __future__ import annotations
+from typing import Any, Optional
 
 from dash import dcc, html
+from plotly import graph_objects as go
 
 from demo_configs import (
+    DEFAULT_QPU,
     DESCRIPTION,
     MAIN_HEADER,
-    SLIDER,
-    NOISE,
-    THEME_COLOR_SECONDARY,
+    SLIDER_EPOCHS,
+    SLIDER_LATENTS,
     THUMBNAIL,
 )
+from src.model_wrapper import display_dataset, get_dataset
+from dwave.cloud import Client
+
+
+# Initialize available QPUs
+try:
+    client = Client.from_config(client="qpu")
+    SOLVERS = [qpu.name for qpu in client.get_solvers()]
+
+    if not len(SOLVERS):
+        raise Exception
+
+except Exception:
+    SOLVERS = ["No Leap Access"]
+
+
+def display_input_data() -> go.Figure:
+    """Load data from MNIST and display in input tab.
+
+    Returns:
+        fig: a figure of MNIST data.
+    """
+    dataset = get_dataset(32, 32*22)
+    fig = display_dataset(dataset, 32)
+
+    return fig
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -56,13 +84,14 @@ def slider(label: str, id: str, config: dict) -> html.Div:
     )
 
 
-def dropdown(label: str, id: str, options: list) -> html.Div:
+def dropdown(label: str, id: str, options: list, value: Optional[Any] = None) -> html.Div:
     """Dropdown element for option selection.
 
     Args:
         label: The title that goes above the dropdown.
         id: A unique selector for this element.
         options: A list of dictionaries of labels and values.
+        value: Optional default value.
     """
     return html.Div(
         className="dropdown-wrapper",
@@ -71,7 +100,7 @@ def dropdown(label: str, id: str, options: list) -> html.Div:
             dcc.Dropdown(
                 id=id,
                 options=options,
-                value=options[0]["value"],
+                value=value if value else options[0]["value"],
                 clearable=False,
                 searchable=False,
             ),
@@ -129,6 +158,32 @@ def radio(label: str, id: str, options: list, value: int, inline: bool = True) -
     )
 
 
+def generate_model_data(model_data: dict) -> html.Div:
+    """Display model data.
+
+    Returns:
+        html.Div: A Div containing the model data associated with the selected model.
+    """
+
+    return html.Div(
+        children=[
+            html.Div(
+                [
+                    html.P([html.B("QPU: "), model_data["qpu"]]),
+                    html.P([html.B("Epochs: "), model_data["n_epochs"]]),
+                ]
+            ),
+            html.Div(
+                [
+                    html.P([html.B("Latents: "), model_data["n_latents"]]),
+                    html.P([html.B("Batch Size: "), model_data["batch_size"]]),
+                ]
+            )
+        ],
+        className="display-flex model-details"
+    )
+
+
 def generate_options(options_list: list) -> list[dict]:
     """Generates options for dropdowns, checklists, radios, etc."""
     return [{"label": label, "value": i} for i, label in enumerate(options_list)]
@@ -140,14 +195,26 @@ def generate_train_tab() -> html.Div:
     Returns:
         html.Div: A Div containing the settings for latents and save file name.
     """
+    qpu_options = [{"label": qpu, "value": qpu} for qpu in SOLVERS]
 
     return html.Div(
         className="settings",
         children=[
+            dropdown(
+                "QPU",
+                "qpu-setting",
+                qpu_options,
+                value=DEFAULT_QPU if DEFAULT_QPU in SOLVERS else SOLVERS[0],
+            ),
             slider(
                 "Latents",
                 "n-latents",
-                SLIDER,
+                SLIDER_LATENTS,
+            ),
+            slider(
+                "Epochs",
+                {"type": "n-epochs", "index": 0},
+                SLIDER_EPOCHS,
             ),
             html.Label("Save to File Name (optional)"),
             dcc.Input(
@@ -164,36 +231,50 @@ def generate_generate_tab() -> html.Div:
     Returns:
         html.Div: A Div containing the settings for selecting the training file and other settings.
     """
-    radio_options = generate_options(["Tune Parameters"])
 
     return html.Div(
         className="settings",
         children=[
-            html.Div(
-                [
-                    html.Label("VAE Training File"),
-                    dcc.Upload(
-                        id="input-file",
-                        children=html.Div(
-                            ["Drag and Drop or ", html.A("Select a File"), html.Div(id="filename")]
-                        ),
-                    ),
-                ],
-                id="uploaded-settings",
+            dropdown(
+                "Trained Model",
+                "model-file-name",
+                generate_options(["No Models Found (please train and save a model)"])
             ),
+            html.Div(id="model-details"),
             checklist(
                 "",
                 "tune-params",
-                sorted(radio_options, key=lambda op: op["value"]),
-                [0],
+                generate_options(["Tune Parameters"]),
+                [],
             ),
-            html.Label("Noise (optional)"),
-            dcc.Input(
-                id="noise",
-                type="number",
-                **NOISE,
-            ),
+            html.Div([
+                slider(
+                    "Epochs",
+                    {"type": "n-epochs", "index": 1},
+                    SLIDER_EPOCHS,
+                ),
+            ], id="tune-parameter-settings")
         ],
+    )
+
+
+def generate_progress_bar(index: int) -> html.Div:
+    """Create progress bar.
+
+    Returns:
+        html.Div: A Div containing a progress bar and captions.
+    """
+
+    return html.Div(
+        [
+            html.Progress(value="0", id={"type": "progress", "index": index}),
+            html.Div([
+                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": index}),
+                html.P("Batch:", id={"type": "progress-caption-batch", "index": index}),
+            ], className="display-flex")
+        ],
+        id={"type": "progress-wrapper", "index": index},
+        className="visibility-hidden",
     )
 
 
@@ -212,14 +293,26 @@ def generate_settings_form() -> dcc.Tabs:
                 label="Train",
                 id="train-tab",
                 className="tab",
-                children=[generate_train_tab(), generate_run_buttons("Train", "Cancel Training")],
+                children=[
+                    generate_train_tab(),
+                    html.Div([
+                        generate_run_buttons("Train", "Cancel Training"),
+                        generate_progress_bar(0),
+                    ]),
+                ],
             ),
             dcc.Tab(
                 label="Generate",
                 id="generate-tab",
                 value="generate-tab",
                 className="tab",
-                children=[generate_generate_tab(), generate_run_buttons("Generate", "Cancel Generation")],
+                children=[
+                    generate_generate_tab(),
+                    html.Div([
+                        generate_run_buttons("Generate", "Cancel Generation"),
+                        generate_progress_bar(1),
+                    ]),
+                ],
             ),
         ],
     )
@@ -230,9 +323,14 @@ def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
     return html.Div(
         className="button-group",
         children=[
-            html.Button(id=f"{'-'.join(run_text.lower().split(" "))}-button", children=run_text, n_clicks=0, disabled=False),
             html.Button(
-                id=f"{'-'.join(cancel_text.lower().split(" "))}-button",
+                id=f'{"-".join(run_text.lower().split(" "))}-button',
+                children=run_text,
+                n_clicks=0,
+                disabled=False,
+            ),
+            html.Button(
+                id=f'{"-".join(cancel_text.lower().split(" "))}-button',
                 children=cancel_text,
                 n_clicks=0,
                 className="display-none",
@@ -322,8 +420,20 @@ def create_interface():
         id="app-container",
         children=[
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
-            dcc.Store(id="run-in-progress", data=False),  # Indicates whether run is in progress
+            dcc.Store(id="last-trained-model"),
             # Header brand banner
+            html.Div(
+                id="popup",
+                className="display-none",
+                children=[
+                    html.Div([
+                        html.H2("Inaccessible QPU"),
+                        html.P("The model selected was trained on a QPU that you do not have access to."),
+                        html.P("Please select or train a new model."),
+                        html.P("x", id="popup-toggle")
+                    ])
+                ]
+            ),
             html.Div(className="banner", children=[html.Img(src=THUMBNAIL)]),
             # Settings and results columns
             html.Div(
@@ -340,10 +450,13 @@ def create_interface():
                                     html.Div(
                                         className="left-column-layer-2",  # Padding and content wrapper
                                         children=[
-                                            html.Div([
-                                                html.H1(MAIN_HEADER),
-                                                html.P(DESCRIPTION),
-                                            ], className="header-wrapper"),
+                                            html.Div(
+                                                [
+                                                    html.H1(MAIN_HEADER),
+                                                    html.P(DESCRIPTION),
+                                                ],
+                                                className="header-wrapper",
+                                            ),
                                             generate_settings_form(),
                                         ],
                                     )
@@ -369,22 +482,26 @@ def create_interface():
                                 mobile_breakpoint=0,
                                 children=[
                                     dcc.Tab(
-                                        label="Input",
+                                        label="MNIST Training Data",
                                         id="input-tab",
                                         value="input-tab",  # used for switching tabs programatically
                                         className="tab",
                                         children=[
-                                            dcc.Loading(
-                                                parent_className="input",
-                                                type="circle",
-                                                color=THEME_COLOR_SECONDARY,
-                                                # A Dash callback (in app.py) will generate content in the Div below
-                                                children=html.Div(id="input"),
+                                            html.Div(
+                                                dcc.Graph(
+                                                    figure=display_input_data(),
+                                                    id="fig-input",
+                                                    responsive=True,
+                                                    config={
+                                                        "displayModeBar": False,
+                                                    },
+                                                ),
+                                                className="graph",
                                             ),
-                                        ],
+                                        ]
                                     ),
                                     dcc.Tab(
-                                        label="Results",
+                                        label="Generated Images",
                                         id="results-tab",
                                         className="tab",
                                         disabled=True,
@@ -392,15 +509,81 @@ def create_interface():
                                             html.Div(
                                                 className="tab-content-results",
                                                 children=[
-                                                    dcc.Loading(
-                                                        parent_className="results",
-                                                        type="circle",
-                                                        color=THEME_COLOR_SECONDARY,
-                                                        # A Dash callback (in app.py) will generate content in the Div below
-                                                        children=html.Div(id="results"),
+                                                    html.Div(
+                                                        className="graph-wrapper-flex",
+                                                        children=[
+                                                            html.Div(
+                                                                [
+                                                                    html.H4("Generated"),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-output",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False,
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    )
+                                                                ],
+                                                            ),
+                                                            html.Div(
+                                                                [
+                                                                    html.H4("Reconstructed Comparison"),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-reconstructed",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    )
+                                                                ],
+                                                            ),
+                                                        ],
                                                     ),
-                                                    # Problem details dropdown
-                                                    html.Div([html.Hr(), problem_details(1)]),
+                                                ],
+                                            )
+                                        ],
+                                    ),
+                                    dcc.Tab(
+                                        label="Loss Graphs",
+                                        id="loss-tab",
+                                        className="tab",
+                                        disabled=True,
+                                        children=[
+                                            html.Div(
+                                                className="tab-content-results",
+                                                children=[
+                                                    html.Div(
+                                                        className="graph-wrapper",
+                                                        children=[
+                                                            html.H4("Mean Squared Error Loss (MSE)"),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-mse-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.H4("Total Loss (MSE + MMD)"),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-other-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                        ],
+                                                    ),
                                                 ],
                                             )
                                         ],
