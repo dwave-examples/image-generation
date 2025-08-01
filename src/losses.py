@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class RadialBasisFunction(torch.nn.Module):
-    """TODO"""
+    """Radial basis function with multiple bandwidth parameters."""
 
     def __init__(
         self,
@@ -41,7 +41,7 @@ class RadialBasisFunction(torch.nn.Module):
         self,
         l2_distance_matrix: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, float]:
-        """TODO"""
+        """A heuristic method for determining an appropriate bandwidth for the radial basis function."""
         if self.bandwidth is None:
             assert l2_distance_matrix is not None
 
@@ -68,7 +68,7 @@ def mmd_loss(
     quadratic_range: tuple[float, float],
     prefactor: float,
 ) -> float:
-    """TODO"""
+    """Computes an unbiased estimate of the maximum mean discrepancy metric."""
     with torch.no_grad():
         samples = grbm.sample(
             sampler,
@@ -103,7 +103,7 @@ def nll_loss(
     persistent_qpu_sample_helper: PersistentQPUSampleHelper,
     sample_set: Optional[SampleSet] = None,
 ) -> tuple[float, torch.Tensor, SampleSet]:
-    """TODO"""
+    """A quasi-objective function with gradients equivalent to that of the negative log-likelihood of data."""
     sample_set = persistent_qpu_sample_helper.sample(
         prefactor,
         grbm,
