@@ -16,6 +16,7 @@
 from pathlib import Path
 from typing import Optional
 
+from demo_configs import UPPER_THRESHOLD, LOWER_THRESHOLD
 import numpy as np
 import plotly.express as px
 import torch
@@ -372,7 +373,9 @@ class ModelWrapper:
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
         if sharpen:
-            images = (images > 0.5).float()
+            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.]))
+            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.]))
+            images = (over + abs(over - 1) * images) * under
 
         generation_tensor_for_plot = make_grid(images, nrow=images_per_row)
 
@@ -432,7 +435,7 @@ class ModelWrapper:
 
         reconstructed_batch, _, _ = self._dvae(batch.to(self._device))
         reconstructed_batch[:, :, :, :, -1] = 1.0
-        reconstruction_tensor_for_plot = make_grid(
+        images = make_grid(
             rearrange(
                 [batch.cpu(), reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu()],
                 "i b c h w -> (b i) c h w"
@@ -442,9 +445,11 @@ class ModelWrapper:
         )
 
         if sharpen:
-            reconstruction_tensor_for_plot = (reconstruction_tensor_for_plot > 0.5).float()
+            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.]))
+            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.]))
+            images = (over + abs(over - 1) * images) * under
 
-        fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
+        fig = px.imshow(images.permute(1, 2, 0))
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
