@@ -52,7 +52,7 @@ Configuration options can be found in the [demo_configs.py](demo_configs.py) fil
 
 > [!NOTE]\
 > If you plan on editing any files while the application is running, please run the application
-with the `--debug` command-line argument for live reloads and easier debugging:
+with the `--debug` command-line argument for easier debugging:
 `python app.py --debug`
 
 
@@ -70,8 +70,8 @@ The latent space has a special structure, that allows for sampling or "generatin
 tractable step. This means that there exists a prior `p` distribution in the latent space that can
 be sampled from from easily. Typically, this distribution could be a multivariate standard normal
 distribution. Training the variational autoencoder needs the inclusion of a loss term (typically a
-KL divergence term) that makes sure the data is encoded to data that is distributed according to
-such multivariate standard normal distribution.
+Kullback-Leibler (KL) divergence term) that makes sure the data is encoded to data that is
+distributed according to such multivariate standard normal distribution.
 
 The motivation behind having such a latent space is that it is easy to sample from and thus
 generate data from, i.e. obtaining a latent vector `z` and passing it to the `decoder` will yield
@@ -86,7 +86,7 @@ prior that learns probability distributions over the spin latent space of an aut
 
 ## Problem Description
 
-The MNIST dataset consists of 60,000 28 by 28 pixel black and white images of hand-written digits.
+The MNIST dataset consists of 60,000 28x28 pixel black and white images of hand-written digits.
 A discrete variational autoencoder is trained on these images in order to create a generative model,
 whose structure is defined in `dwave.plugins.torch.autoencoder` with a
 `GraphRestrictedBoltzmannMachine` prior.
@@ -124,7 +124,7 @@ In this demo, a mixture of radial basis kernels are used:
 
 ![eq4](static/eq4.png)
 
-where &gamma;\_u is _2^w_ for _w ∈ [-d/2, -d/2+1, ..., d/2]_. Thus _MMD(z,s)_ is evaluated
+where &gamma;\_u is _2^w_ for _w ∈ \{-d/2, -d/2+1, ..., d/2\}_. Thus _MMD(z,s)_ is evaluated
 by sampling _z_ from the encoded data, and _s_ from the QPU to estimate the expectation values of
 _&eta;\_k(encoded data, QPU)_.
 
@@ -172,7 +172,7 @@ the `GraphRestrictedBoltzmannMachine` prior.
 
 The discrete variational autoencoder is defined as:
 ```python
-dvae = DiscreteAutoEncoder(encoder, decoder, latent_to_discrete)
+dvae = DiscreteVariationalAutoencoder(encoder, decoder, latent_to_discrete)
 ```
 where `encoder` and `decoder` are pytorch models and `latent_to_discrete` is a function which
 transforms the latent representation of data (the output of the encoder) to discrete or spin
@@ -185,7 +185,7 @@ grbm = GraphRestrictedBoltzmannMachine(
     graph.edges,
 )
 ```
-where `graph` is some `networkx` graph that is to be embedded on the QPU.
+where `graph` is some collection of nodes and edges that is to be embedded on the QPU.
 
 These two models are called by the loss functions to run a gradient-descent algorithm that minimizes
 them.
