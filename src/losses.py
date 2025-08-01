@@ -11,6 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# The use of the Maximum Mean Discrepancy (MMD) loss implementations
+# below (including the mmd_loss function) with a quantum computing
+# system is protected by the intellectual property rights of D-Wave
+# Quantum Inc. and its affiliates.
+#
+# The use of the Maximum Mean Discrepancy (MMD) loss implementations
+# below (including the mmd_loss function) with D-Wave's quantum computing
+# system will require access to D-Wave’s LeapTM quantum cloud service and
+# will be governed by the Leap Cloud Subscription Agreement available at:
+# https://cloud.dwavesys.com/leap/legal/cloud_subscription_agreement/
+#
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
