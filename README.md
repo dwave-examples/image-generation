@@ -178,14 +178,14 @@ where `encoder` and `decoder` are pytorch models and `latent_to_discrete` is a f
 transforms the latent representation of data (the output of the encoder) to discrete or spin
 variables.
 
-The GRBM is defined by:
+The graph-restricted Boltzmann machine is defined by:
 ```python
 grbm = GraphRestrictedBoltzmannMachine(
-    graph.nodes,
-    graph.edges,
+    nodes,
+    edges,
 )
 ```
-where `graph` is some collection of nodes and edges that is to be embedded on the QPU.
+where `nodes` and `edges` correspond to the graph that is to be embedded on the QPU.
 
 These models are used to minimize the losses described by the above loss functions.
 

@@ -21,7 +21,7 @@ import numpy as np
 import plotly.express as px
 import torch
 import yaml
-from dwave.plugins.torch.autoencoder import DiscreteAutoEncoder
+from dwave.plugins.torch.autoencoder import DiscreteVariationalAutoencoder
 from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
 from plotly import graph_objects as go
 from torch.utils.data import DataLoader
@@ -180,7 +180,7 @@ class ModelWrapper:
         if self.LATENT_TO_DISCRETE in ["heaviside"] and self.N_REPLICAS != 1:
             raise ValueError("heaviside latent-to-discrete can only be used with n_replicas=1")
 
-        dvae = DiscreteAutoEncoder(
+        dvae = DiscreteVariationalAutoencoder(
             encoder=Encoder(n_latents=self.n_latents),
             decoder=Decoder(n_latents=self.n_latents),
             latent_to_discrete=get_latent_to_discrete(self.LATENT_TO_DISCRETE),
