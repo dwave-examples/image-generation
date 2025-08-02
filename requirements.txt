@@ -1,6 +1,6 @@
 dash[diskcache]~=3.0
 dwave-ocean-sdk~=7.1
-dwave-pytorch-plugin
+dwave-pytorch-plugin~=0.2
 einops~=0.8
 matplotlib~=3.10
 pyyaml~=6.0

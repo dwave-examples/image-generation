@@ -23,7 +23,7 @@ def greedy_get_subgraph(
     n_nodes: int,
     random_seed: Optional[int],
     graph: Optional[nx.Graph] = None,
-    qpu: Optional[str] = None
+    qpu: Optional[str] = None,
 ) -> tuple[nx.Graph, dict]:
     """TODO
 
@@ -89,11 +89,7 @@ def greedy_get_subgraph(
 
 
 def get_sampler_and_sampler_kwargs(
-    num_reads: int,
-    annealing_time: float,
-    n_latents: int,
-    random_seed: int,
-    qpu: str
+    num_reads: int, annealing_time: float, n_latents: int, random_seed: int, qpu: str
 ) -> tuple[FixedEmbeddingComposite, dict, nx.Graph, tuple[float, float], tuple[float, float]]:
     """TODO
 

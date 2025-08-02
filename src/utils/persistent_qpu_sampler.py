@@ -6,7 +6,7 @@ import torch
 from dimod import Sampler, SampleSet, as_samples
 
 if TYPE_CHECKING:
-    from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
+    from dwave.plugins.torch.models import GraphRestrictedBoltzmannMachine
 
 
 def push_to_deque(

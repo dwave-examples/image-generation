@@ -32,7 +32,8 @@ import torch
 from dimod import Sampler, SampleSet
 
 if TYPE_CHECKING:
-    from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
+    from dwave.plugins.torch.models import GraphRestrictedBoltzmannMachine
+
     from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
@@ -51,8 +52,7 @@ class RadialBasisFunction(torch.nn.Module):
         self.bandwidth = bandwidth
 
     def get_bandwidth(
-        self,
-        l2_distance_matrix: Optional[torch.Tensor] = None
+        self, l2_distance_matrix: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, float]:
         """A heuristic method for determining an appropriate bandwidth for the radial basis function."""
         if self.bandwidth is None:
