@@ -24,7 +24,7 @@ import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
 from demo_configs import SHARPEN_OUTPUT
-from dwave.plugins.torch.autoencoder import DiscreteVariationalAutoencoder
+from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
 
 from demo_interface import SOLVERS, generate_model_data, generate_options

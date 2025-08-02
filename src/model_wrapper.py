@@ -21,8 +21,7 @@ import numpy as np
 import plotly.express as px
 import torch
 import yaml
-from dwave.plugins.torch.autoencoder import DiscreteVariationalAutoencoder
-from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
+from dwave.plugins.torch.models import GraphRestrictedBoltzmannMachine, DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
@@ -293,7 +292,7 @@ class ModelWrapper:
         self._dvae.train()
         self._grbm.train()
 
-        reconstructed_images, spins, _ = self._dvae(images, self.N_REPLICAS)
+        _, spins, reconstructed_images = self._dvae(images, self.N_REPLICAS)
 
         # train autoencoder
         if train_dvae(self._tpar["opt_step"], epoch):
@@ -433,7 +432,7 @@ class ModelWrapper:
         self._dvae.eval()
         self._grbm.eval()
 
-        reconstructed_batch, _, _ = self._dvae(batch.to(self._device))
+        _, _, reconstructed_batch = self._dvae(batch.to(self._device))
         reconstructed_batch[:, :, :, :, -1] = 1.0
         images = make_grid(
             rearrange(

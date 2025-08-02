@@ -32,7 +32,7 @@ import torch
 from dimod import Sampler, SampleSet
 
 if TYPE_CHECKING:
-    from dwave.plugins.torch.boltzmann_machine import GraphRestrictedBoltzmannMachine
+    from dwave.plugins.torch.models import GraphRestrictedBoltzmannMachine
     from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
