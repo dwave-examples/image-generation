@@ -216,7 +216,7 @@ def generate_train_tab() -> html.Div:
                 {"type": "n-epochs", "index": 0},
                 SLIDER_EPOCHS,
             ),
-            html.Label("Save to File Name (optional)"),
+            html.Label("Save to File Name"),
             dcc.Input(
                 id="file-name",
                 type="text",
