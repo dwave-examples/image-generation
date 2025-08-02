@@ -14,9 +14,11 @@
 
 """This file stores the Dash HTML layout for the app."""
 from __future__ import annotations
+
 from typing import Any, Optional
 
 from dash import dcc, html
+from dwave.cloud import Client
 from plotly import graph_objects as go
 
 from demo_configs import (
@@ -28,8 +30,6 @@ from demo_configs import (
     THUMBNAIL,
 )
 from src.model_wrapper import display_dataset, get_dataset
-from dwave.cloud import Client
-
 
 # Initialize available QPUs
 try:
@@ -49,7 +49,7 @@ def display_input_data() -> go.Figure:
     Returns:
         fig: a figure of MNIST data.
     """
-    dataset = get_dataset(32, 32*22)
+    dataset = get_dataset(32, 32 * 22)
     fig = display_dataset(dataset, 32)
 
     return fig
@@ -178,9 +178,9 @@ def generate_model_data(model_data: dict) -> html.Div:
                     html.P([html.B("Latents: "), model_data["n_latents"]]),
                     html.P([html.B("Batch Size: "), model_data["batch_size"]]),
                 ]
-            )
+            ),
         ],
-        className="display-flex model-details"
+        className="display-flex model-details",
     )
 
 
@@ -238,7 +238,7 @@ def generate_generate_tab() -> html.Div:
             dropdown(
                 "Trained Model",
                 "model-file-name",
-                generate_options(["No Models Found (please train and save a model)"])
+                generate_options(["No Models Found (please train and save a model)"]),
             ),
             html.Div(id="model-details"),
             checklist(
@@ -247,13 +247,16 @@ def generate_generate_tab() -> html.Div:
                 generate_options(["Tune Parameters"]),
                 [],
             ),
-            html.Div([
-                slider(
-                    "Epochs",
-                    {"type": "n-epochs", "index": 1},
-                    SLIDER_EPOCHS,
-                ),
-            ], id="tune-parameter-settings")
+            html.Div(
+                [
+                    slider(
+                        "Epochs",
+                        {"type": "n-epochs", "index": 1},
+                        SLIDER_EPOCHS,
+                    ),
+                ],
+                id="tune-parameter-settings",
+            ),
         ],
     )
 
@@ -268,10 +271,15 @@ def generate_progress_bar(index: int) -> html.Div:
     return html.Div(
         [
             html.Progress(value="0", id={"type": "progress", "index": index}),
-            html.Div([
-                html.P("Epochs Completed:", id={"type": "progress-caption-epoch", "index": index}),
-                html.P("Batch:", id={"type": "progress-caption-batch", "index": index}),
-            ], className="display-flex")
+            html.Div(
+                [
+                    html.P(
+                        "Epochs Completed:", id={"type": "progress-caption-epoch", "index": index}
+                    ),
+                    html.P("Batch:", id={"type": "progress-caption-batch", "index": index}),
+                ],
+                className="display-flex",
+            ),
         ],
         id={"type": "progress-wrapper", "index": index},
         className="visibility-hidden",
@@ -295,10 +303,12 @@ def generate_settings_form() -> dcc.Tabs:
                 className="tab",
                 children=[
                     generate_train_tab(),
-                    html.Div([
-                        generate_run_buttons("Train", "Cancel Training"),
-                        generate_progress_bar(0),
-                    ]),
+                    html.Div(
+                        [
+                            generate_run_buttons("Train", "Cancel Training"),
+                            generate_progress_bar(0),
+                        ]
+                    ),
                 ],
             ),
             dcc.Tab(
@@ -308,10 +318,12 @@ def generate_settings_form() -> dcc.Tabs:
                 className="tab",
                 children=[
                     generate_generate_tab(),
-                    html.Div([
-                        generate_run_buttons("Generate", "Cancel Generation"),
-                        generate_progress_bar(1),
-                    ]),
+                    html.Div(
+                        [
+                            generate_run_buttons("Generate", "Cancel Generation"),
+                            generate_progress_bar(1),
+                        ]
+                    ),
                 ],
             ),
         ],
@@ -426,13 +438,17 @@ def create_interface():
                 id="popup",
                 className="display-none",
                 children=[
-                    html.Div([
-                        html.H2("Inaccessible QPU"),
-                        html.P("The model selected was trained on a QPU that you do not have access to."),
-                        html.P("Please select or train a new model."),
-                        html.P("x", id="popup-toggle")
-                    ])
-                ]
+                    html.Div(
+                        [
+                            html.H2("Inaccessible QPU"),
+                            html.P(
+                                "The model selected was trained on a QPU that you do not have access to."
+                            ),
+                            html.P("Please select or train a new model."),
+                            html.P("x", id="popup-toggle"),
+                        ]
+                    )
+                ],
             ),
             html.Div(className="banner", children=[html.Img(src=THUMBNAIL)]),
             # Settings and results columns
@@ -498,7 +514,7 @@ def create_interface():
                                                 ),
                                                 className="graph",
                                             ),
-                                        ]
+                                        ],
                                     ),
                                     dcc.Tab(
                                         label="Generated Images",
@@ -524,12 +540,14 @@ def create_interface():
                                                                             },
                                                                         ),
                                                                         className="graph",
-                                                                    )
+                                                                    ),
                                                                 ],
                                                             ),
                                                             html.Div(
                                                                 [
-                                                                    html.H4("Reconstructed Comparison"),
+                                                                    html.H4(
+                                                                        "Reconstructed Comparison"
+                                                                    ),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-reconstructed",
@@ -539,7 +557,7 @@ def create_interface():
                                                                             },
                                                                         ),
                                                                         className="graph",
-                                                                    )
+                                                                    ),
                                                                 ],
                                                             ),
                                                         ],
@@ -560,7 +578,9 @@ def create_interface():
                                                     html.Div(
                                                         className="graph-wrapper",
                                                         children=[
-                                                            html.H4("Mean Squared Error Loss (MSE)"),
+                                                            html.H4(
+                                                                "Mean Squared Error Loss (MSE)"
+                                                            ),
                                                             html.Div(
                                                                 dcc.Graph(
                                                                     id="fig-mse-loss",

@@ -23,10 +23,10 @@ from pathlib import Path
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
-from demo_configs import SHARPEN_OUTPUT
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
 
+from demo_configs import SHARPEN_OUTPUT
 from demo_interface import SOLVERS, generate_model_data, generate_options
 from src.model_wrapper import ModelWrapper
 
@@ -39,7 +39,7 @@ def create_model_files(
     qpu: str,
     n_latents: int,
     n_epochs: int,
-    loss_data: dict
+    loss_data: dict,
 ):
     """Creates model files, losses file, and parameters file.
 
@@ -190,7 +190,10 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
     if not len(models):
         models = generate_options(["No Models Found (please train and save a model)"])
 
-    return models, last_trained_model if last_trained_model else models[0],
+    return (
+        models,
+        last_trained_model if last_trained_model else models[0],
+    )
 
 
 @dash.callback(
@@ -224,8 +227,8 @@ def update_progress(
     progress_value = int(progress_value) if progress_value else 0
     progress_max = int(progress_max) if progress_max else 0
 
-    epoch_size = math.floor(progress_max/n_epochs)
-    curr_epoch = math.floor(progress_value/epoch_size)
+    epoch_size = math.floor(progress_max / n_epochs)
+    curr_epoch = math.floor(progress_value / epoch_size)
 
     return (
         f"Epochs Completed: {curr_epoch}/{n_epochs}",
@@ -346,7 +349,7 @@ def train(
         {
             "mse_losses": model.losses["mse_losses"],
             "dvae_losses": model.losses["dvae_losses"],
-        }
+        },
     )
 
     fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
@@ -354,7 +357,14 @@ def train(
 
     fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
-    return fig_output, fig_mse_loss, fig_dvae_loss, fig_reconstructed, file_name, "visibility-hidden"
+    return (
+        fig_output,
+        fig_mse_loss,
+        fig_dvae_loss,
+        fig_reconstructed,
+        file_name,
+        "visibility-hidden",
+    )
 
 
 @dash.callback(
@@ -457,12 +467,7 @@ def generate(
         Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
 
         create_model_files(
-            model,
-            model_file_name,
-            model_data["qpu"],
-            model_data["n_latents"],
-            n_epochs,
-            loss_data
+            model, model_file_name, model_data["qpu"], model_data["n_latents"], n_epochs, loss_data
         )
 
     fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
@@ -472,4 +477,11 @@ def generate(
 
     fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
-    return fig_output, fig_mse_loss, fig_dvae_loss, fig_reconstructed, "display-none", "visibility-hidden"
+    return (
+        fig_output,
+        fig_mse_loss,
+        fig_dvae_loss,
+        fig_reconstructed,
+        "display-none",
+        "visibility-hidden",
+    )

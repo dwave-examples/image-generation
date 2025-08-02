@@ -16,18 +16,22 @@
 from pathlib import Path
 from typing import Optional
 
-from demo_configs import UPPER_THRESHOLD, LOWER_THRESHOLD
 import numpy as np
 import plotly.express as px
 import torch
 import yaml
-from dwave.plugins.torch.models import GraphRestrictedBoltzmannMachine, DiscreteVariationalAutoencoder
+from dwave.plugins.torch.models import (
+    DiscreteVariationalAutoencoder,
+    GraphRestrictedBoltzmannMachine,
+)
+from einops import rearrange
 from plotly import graph_objects as go
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Resize, ToTensor
 from torchvision.utils import make_grid
-from einops import rearrange
+
+from demo_configs import LOWER_THRESHOLD, UPPER_THRESHOLD
 
 from .decoder import Decoder
 from .encoder import Encoder
@@ -58,11 +62,7 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
     return epoch < 6 and opt_step % 10 == 0
 
 
-def get_dataset(
-    image_size: int,
-    batch_size: int,
-    dataset_size: Optional[int] = None
-) -> DataLoader:
+def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = None) -> DataLoader:
     transform = Compose(
         [
             Resize((image_size, image_size)),
@@ -94,9 +94,9 @@ def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(showticklabels=False)
     fig.update_layout(
-        margin={'t': 0,'l': 0,'b': 0,'r': 0},
+        margin={"t": 0, "l": 0, "b": 0, "r": 0},
         paper_bgcolor="black",
-        plot_bgcolor='black',
+        plot_bgcolor="black",
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
     )
@@ -114,7 +114,9 @@ class ModelWrapper:
         n_latents: The number of latent variables in the model.
     """
 
-    def __init__(self, qpu: str, n_latents: Optional[int] = None, training_parameter_file: str = None) -> None:
+    def __init__(
+        self, qpu: str, n_latents: Optional[int] = None, training_parameter_file: str = None
+    ) -> None:
         self.qpu: str = qpu
         self.n_latents: int = n_latents
 
@@ -372,8 +374,8 @@ class ModelWrapper:
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
         if sharpen:
-            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.]))
-            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.]))
+            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.0]))
+            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.0]))
             images = (over + abs(over - 1) * images) * under
 
         generation_tensor_for_plot = make_grid(images, nrow=images_per_row)
@@ -382,9 +384,7 @@ class ModelWrapper:
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(
-            margin={'t':0,'l':0,'b':0,'r':0}
-        )
+        fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
         return fig
 
     def generate_loss_plot(self) -> tuple[go.Figure, go.Figure]:
@@ -411,8 +411,8 @@ class ModelWrapper:
         fig_other.update_xaxes(title_text="Batch")
         fig_other.update_yaxes(title_text="Loss")
 
-        fig_mse.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
-        fig_other.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
+        fig_mse.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+        fig_other.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         return fig_mse, fig_other
 
@@ -437,21 +437,21 @@ class ModelWrapper:
         images = make_grid(
             rearrange(
                 [batch.cpu(), reconstructed_batch.clip(0.0, 1.0).squeeze(1).cpu()],
-                "i b c h w -> (b i) c h w"
+                "i b c h w -> (b i) c h w",
             ),
             nrow=images_per_row,
             padding=0,
         )
 
         if sharpen:
-            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.]))
-            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.]))
+            over = (images - UPPER_THRESHOLD).heaviside(torch.tensor([0.0]))
+            under = (images - LOWER_THRESHOLD).heaviside(torch.tensor([0.0]))
             images = (over + abs(over - 1) * images) * under
 
         fig = px.imshow(images.permute(1, 2, 0))
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(margin={'t':0,'l':0,'b':0,'r':0})
+        fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         return fig
