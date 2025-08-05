@@ -22,7 +22,7 @@ class Encoder(torch.nn.Module):
 
     def __init__(self, n_latents: int):
         super().__init__()
-        channels = [1] + [2**i for i in range(5, int(math.log2(n_latents)) + 1)]
+        channels = [1, 32, 64, 128, n_latents]
         layers = []
 
         for i in range(len(channels) - 1):
