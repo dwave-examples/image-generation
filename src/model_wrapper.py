@@ -349,7 +349,7 @@ class ModelWrapper:
 
         return mse_loss
 
-    def generate_output(self, sharpen: bool = False) -> go.Figure:
+    def generate_output(self, sharpen: bool = False, save_to_file: str = "") -> go.Figure:
         """Generate output images from trained model.
 
         Args:
@@ -384,7 +384,12 @@ class ModelWrapper:
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+        fig.update_layout(margin={"t": 0,"l": 0,"b": 0,"r": 0})
+
+        if save_to_file:
+            image_path = Path("generated_images")
+            fig.write_image(f"{image_path}/{save_to_file}", width=1000, height=1000)
+
         return fig
 
     def generate_loss_plot(self) -> tuple[go.Figure, go.Figure]:

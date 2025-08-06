@@ -3,3 +3,4 @@ __pycache__
 cache
 assets/__generated_theme.css
 data/MNIST/
+generated_images/*

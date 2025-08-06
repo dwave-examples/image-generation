@@ -23,14 +23,21 @@ from pathlib import Path
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
+from demo_configs import SHARPEN_OUTPUT
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
+import plotly.express as px
+from PIL import Image
 
 from demo_configs import SHARPEN_OUTPUT
 from demo_interface import SOLVERS, generate_model_data, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
+IMAGE_FILE_DIR = "generated_images"
+IMAGE_PATH = Path(IMAGE_FILE_DIR)
+IMAGE_FILE_PREFIX = "generated_epoch_"
 
 
 def create_model_files(
@@ -263,6 +270,69 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
 
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
+    Output("last-saved-image-id", "data"),
+    Output("results-tab", "disabled"),
+    inputs=[
+        Input("epoch-image-checker", "n_intervals"),
+        State("last-saved-image-id", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_image_each_epoch(
+    epoch_image_checker: int, last_saved_image_id: int
+) -> tuple[str, int, bool]:
+    """Updates image after each epoch.
+
+    Args:
+
+        
+    Returns:
+        fig-output: The generated image output.
+    """
+    
+    if last_saved_image_id is None:
+        for file in IMAGE_PATH.iterdir():
+            file.unlink()
+
+        return dash.no_update, 0, dash.no_update
+
+    new_image_id = last_saved_image_id+1
+    image_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_FILE_PREFIX}{new_image_id}.png"
+
+    try:
+        image = Image.open(image_file_path)
+        fig = go.Figure()
+
+        fig.update_layout(
+            width=500,
+            height=500,
+            margin={"l": 0, "r": 0, "t": 0, "b": 0},
+            xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 1]),
+            yaxis=dict(showgrid=False, zeroline=False, visible=False, scaleanchor="x", range=[0, 1]),
+            images=[
+                dict(
+                    source=image,
+                    xref="x",
+                    yref="y",
+                    x=0,
+                    y=1,
+                    sizex=1,
+                    sizey=1,
+                    layer="below"
+                )
+            ]
+        )
+
+        return fig, new_image_id, False
+
+    except:
+        # No image found, this is expected behavior before the epoch has finished.
+        raise PreventUpdate
+    
+
+
+@dash.callback(
+    Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
     Output("fig-other-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
@@ -279,12 +349,13 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
     running=[
         (Output("cancel-training-button", "className"), "", "display-none"),
         (Output("train-button", "className"), "display-none", ""),
-        (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
+        # (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
         (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
         (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
+        (Output("epoch-image-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
     progress=[
@@ -340,6 +411,8 @@ def train(
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
+        fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT, save_to_file=f"{IMAGE_FILE_PREFIX}{epoch+1}.png")
+
     create_model_files(
         model,
         file_name,
@@ -352,7 +425,6 @@ def train(
         },
     )
 
-    fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
     fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
 
     fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)

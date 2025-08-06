@@ -220,6 +220,7 @@ def generate_train_tab() -> html.Div:
             dcc.Input(
                 id="file-name",
                 type="text",
+                required=True,
             ),
         ],
     )
@@ -433,6 +434,8 @@ def create_interface():
         children=[
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
             dcc.Store(id="last-trained-model"),
+            dcc.Store(id="last-saved-image-id"),
+            dcc.Interval(id="epoch-image-checker", interval=500, disabled=True),
             # Header brand banner
             html.Div(
                 id="popup",
