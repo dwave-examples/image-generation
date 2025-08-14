@@ -318,15 +318,33 @@ def reset_last_saved_image_id(epoch_image_checker_disabled: bool) -> int:
     """Resets last-saved-image-id when epoch_image_checker interval is disabled.
 
     Args:
-        last-saved-image-id: The id of the last saved image.
+        epoch_image_checker_disabled: Whether the image checker interval is disabled.
 
     Returns:
-        epoch_image_checker_disabled: Whether the image checker interval is disabled.
+        last-saved-image-id: The id of the last saved image.
     """
     if epoch_image_checker_disabled:
         return None
 
     raise PreventUpdate
+
+
+@dash.callback(
+    Output("train-button", "disabled"),
+    inputs=[
+        Input("file-name", "value"),
+    ],
+)
+def file_name_validation(file_name: str) -> bool:
+    """Disables run button if no filename.
+
+    Args:
+        file_name: The value of the file name input.
+
+    Returns:
+        train-button-disabled: Whether the train button should be disabled.
+    """
+    return not file_name
 
 
 class UpdateImageEachEpochReturn(NamedTuple):
