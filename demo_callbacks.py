@@ -19,6 +19,7 @@ import math
 import os
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 import dash
 from dash import MATCH
@@ -27,7 +28,7 @@ from dash.exceptions import PreventUpdate
 from demo_configs import SHARPEN_OUTPUT
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
-import plotly.express as px
+import plotly.io as pio
 from PIL import Image
 
 from demo_configs import SHARPEN_OUTPUT
@@ -37,7 +38,9 @@ from src.model_wrapper import ModelWrapper
 MODEL_PATH = Path("models")
 IMAGE_FILE_DIR = "generated_images"
 IMAGE_PATH = Path(IMAGE_FILE_DIR)
-IMAGE_FILE_PREFIX = "generated_epoch_"
+IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
+IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
+LOSS_PREFIX = "loss_"
 
 
 def create_model_files(
@@ -78,6 +81,42 @@ def create_model_files(
 
     with open(MODEL_PATH / file_name / "losses.json", "w") as f:
         json.dump(loss_data, f)
+
+
+def create_image_fig(image_path: str) -> go.Figure:
+    """Creates a figure given an image file path.
+
+    Args:
+        image_path: The location of the image.
+
+    Returns:
+        fig: A Plotly figure of the image.
+
+    """
+    image = Image.open(image_path)
+    fig = go.Figure()
+
+    fig.update_layout(
+        width=500,
+        height=500,
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
+        xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 1]),
+        yaxis=dict(showgrid=False, zeroline=False, visible=False, scaleanchor="x", range=[0, 1]),
+        images=[
+            dict(
+                source=image,
+                xref="x",
+                yref="y",
+                x=0,
+                y=1,
+                sizex=1,
+                sizey=1,
+                layer="below"
+            )
+        ]
+    )
+
+    return fig
 
 
 @dash.callback(
@@ -269,9 +308,48 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
 
 
 @dash.callback(
+    Output("last-saved-image-id", "data", allow_duplicate=True),
+    inputs=[
+        Input("epoch-image-checker", "disabled"),
+    ],
+    prevent_initial_call=True,
+)
+def reset_last_saved_image_id(epoch_image_checker_disabled: bool) -> int:
+    """Resets last-saved-image-id when epoch_image_checker interval is disabled.
+
+    Args:
+        last-saved-image-id: The id of the last saved image.
+
+    Returns:
+        epoch_image_checker_disabled: Whether the image checker interval is disabled.
+    """
+    if epoch_image_checker_disabled:
+        return None
+
+    raise PreventUpdate
+
+
+class UpdateImageEachEpochReturn(NamedTuple):
+    """Return type for the ``update_image_each_epoch`` callback function."""
+
+    fig_generated: go.Figure = dash.no_update
+    fig_reconstructed: go.Figure = dash.no_update
+    fig_mse_loss: go.Figure = dash.no_update
+    fig_total_loss: go.Figure = dash.no_update
+    last_saved_image_id: int = dash.no_update
+    results_tab_disabled: bool = dash.no_update
+    loss_tab_disabled: bool = dash.no_update
+    tabs_value: str = dash.no_update
+
+@dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
+    Output("fig-reconstructed", "figure", allow_duplicate=True),
+    Output("fig-mse-loss", "figure", allow_duplicate=True),
+    Output("fig-total-loss", "figure", allow_duplicate=True),
     Output("last-saved-image-id", "data"),
     Output("results-tab", "disabled"),
+    Output("loss-tab", "disabled"),
+    Output("tabs", "value"),
     inputs=[
         Input("epoch-image-checker", "n_intervals"),
         State("last-saved-image-id", "data"),
@@ -280,50 +358,62 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
 )
 def update_image_each_epoch(
     epoch_image_checker: int, last_saved_image_id: int
-) -> tuple[str, int, bool]:
+) -> UpdateImageEachEpochReturn:
     """Updates image after each epoch.
 
     Args:
-
+        epoch_image_checker: An interval that fires to check whether a new image has been generated.
+        last_saved_image_id: The ID of the image that was last saved.
         
     Returns:
-        fig-output: The generated image output.
+        UpdateImageEachEpochReturn named tuple:
+            fig_generated: The generated image output.
+            fig_reconstructed: The image comparing the reconstructed image to the original.
+            fig_mse_loss: The graph showing the MSE Loss.
+            fig_total_loss: The graph showing the total Loss (MMD + MSE).
+            last_saved_image_id: The ID of the image that was last saved.
+            results_tab_disabled: Whether the results tab should be disabled.
+            loss_tab_disabled: Whether the loss tab should be disabled.
+            tabs_value: The tab that should be active.
     """
     
     if last_saved_image_id is None:
         for file in IMAGE_PATH.iterdir():
-            file.unlink()
+            file.unlink()  # Delete all files on first iteration.
 
-        return dash.no_update, 0, dash.no_update
-
-    new_image_id = last_saved_image_id+1
-    image_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_FILE_PREFIX}{new_image_id}.png"
-
-    try:
-        image = Image.open(image_file_path)
-        fig = go.Figure()
-
-        fig.update_layout(
-            width=500,
-            height=500,
-            margin={"l": 0, "r": 0, "t": 0, "b": 0},
-            xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 1]),
-            yaxis=dict(showgrid=False, zeroline=False, visible=False, scaleanchor="x", range=[0, 1]),
-            images=[
-                dict(
-                    source=image,
-                    xref="x",
-                    yref="y",
-                    x=0,
-                    y=1,
-                    sizex=1,
-                    sizey=1,
-                    layer="below"
-                )
-            ]
+        return UpdateImageEachEpochReturn(
+            last_saved_image_id=0,
+            results_tab_disabled=True,
+            loss_tab_disabled=True,
+            tabs_value="input-tab",
         )
 
-        return fig, new_image_id, False
+    new_image_id = last_saved_image_id+1
+    image_gen_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_image_id}.png"
+    image_recon_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_image_id}.png"
+    loss_mse_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{new_image_id}.json"
+    loss_total_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}total_{new_image_id}.json"
+
+    try:
+        fig_gen = create_image_fig(image_gen_file_path)
+        fig_recon = create_image_fig(image_recon_file_path)
+
+        with open(loss_mse_file_path, "r") as f:
+            fig_mse_json = json.load(f)
+            fig_mse = pio.from_json(json.dumps(fig_mse_json))
+        with open(loss_total_file_path, "r") as f:
+            fig_total_json = json.load(f)
+            fig_total = pio.from_json(json.dumps(fig_total_json))
+
+        return UpdateImageEachEpochReturn(
+            fig_generated=fig_gen,
+            fig_reconstructed=fig_recon,
+            fig_mse_loss=fig_mse,
+            fig_total_loss=fig_total,
+            last_saved_image_id=new_image_id,
+            results_tab_disabled=False,
+            loss_tab_disabled=False,
+        )
 
     except:
         # No image found, this is expected behavior before the epoch has finished.
@@ -334,7 +424,7 @@ def update_image_each_epoch(
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
-    Output("fig-other-loss", "figure", allow_duplicate=True),
+    Output("fig-total-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("last-trained-model", "data"),
     Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
@@ -349,12 +439,9 @@ def update_image_each_epoch(
     running=[
         (Output("cancel-training-button", "className"), "", "display-none"),
         (Output("train-button", "className"), "display-none", ""),
-        # (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
-        (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
-        (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
         (Output("epoch-image-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
@@ -386,7 +473,7 @@ def train(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the total Loss (MMD + MSE).
+            fig-total-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
@@ -411,7 +498,18 @@ def train(
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
-        fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT, save_to_file=f"{IMAGE_FILE_PREFIX}{epoch+1}.png")
+        fig_output = model.generate_output(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{IMAGE_GEN_FILE_PREFIX}{epoch+1}.png",
+        )
+        fig_reconstructed = model.generate_reconstucted_samples(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{IMAGE_RECON_FILE_PREFIX}{epoch+1}.png",
+        )
+        fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
+            save_to_file_mse=f"{LOSS_PREFIX}mse_{epoch+1}.json",
+            save_to_file_total=f"{LOSS_PREFIX}total_{epoch+1}.json",
+        )
 
     create_model_files(
         model,
@@ -424,10 +522,6 @@ def train(
             "dvae_losses": model.losses["dvae_losses"],
         },
     )
-
-    fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
-
-    fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
     return (
         fig_output,
@@ -442,7 +536,7 @@ def train(
 @dash.callback(
     Output("fig-output", "figure"),
     Output("fig-mse-loss", "figure"),
-    Output("fig-other-loss", "figure"),
+    Output("fig-total-loss", "figure"),
     Output("fig-reconstructed", "figure"),
     Output("popup", "className", allow_duplicate=True),
     Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
@@ -495,7 +589,7 @@ def generate(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the total Loss (MMD + MSE).
+            fig-total-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             progress-wrapper-className: The classname of the progress wrapper.
     """

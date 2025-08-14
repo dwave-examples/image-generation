@@ -597,7 +597,7 @@ def create_interface():
                                                             html.H4("Total Loss (MSE + MMD)"),
                                                             html.Div(
                                                                 dcc.Graph(
-                                                                    id="fig-other-loss",
+                                                                    id="fig-total-loss",
                                                                     responsive=True,
                                                                     config={
                                                                         "displayModeBar": False
