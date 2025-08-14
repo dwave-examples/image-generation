@@ -1,5 +1,5 @@
 dash[diskcache]~=3.0
-dwave-ocean-sdk~=7.1
+dwave-ocean-sdk~=8.4
 dwave-pytorch-plugin~=0.2
 einops~=0.8
 kaleido~=1.0

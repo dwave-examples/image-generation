@@ -84,7 +84,7 @@ arguments or return values. For more information, see the
 
 - [ ] **Requirements**: All requirements for running the demo have been listed in `requirements.txt`
 and are either pinned to a version supported by the latest Ocean SDK release or lower bounded.
-`dwave-ocean-sdk` is unpinned and lower bounded.
+`dwave-ocean-sdk` version specified has to be compatible with the latest release available.
 
 - [ ] **LICENSE**: The demo complies with the Apache 2.0 License and the [`LICENSE`](LICENSE) file
 is included in the root directory. All files include a license header.
