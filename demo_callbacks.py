@@ -25,7 +25,6 @@ import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from demo_configs import SHARPEN_OUTPUT
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
 import plotly.io as pio
@@ -37,7 +36,6 @@ from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
 IMAGE_FILE_DIR = "generated_images"
-IMAGE_PATH = Path(IMAGE_FILE_DIR)
 IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
@@ -97,8 +95,8 @@ def create_image_fig(image_path: str) -> go.Figure:
     fig = go.Figure()
 
     fig.update_layout(
-        width=500,
-        height=500,
+        width=1000,
+        height=1000,
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 1]),
         yaxis=dict(showgrid=False, zeroline=False, visible=False, scaleanchor="x", range=[0, 1]),
@@ -396,7 +394,8 @@ def update_image_each_epoch(
     """
     
     if last_saved_image_id is None:
-        for file in IMAGE_PATH.iterdir():
+        image_path = Path(IMAGE_FILE_DIR)
+        for file in image_path.iterdir():
             file.unlink()  # Delete all files on first iteration.
 
         return UpdateImageEachEpochReturn(
@@ -518,15 +517,15 @@ def train(
 
         fig_output = model.generate_output(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_GEN_FILE_PREFIX}{epoch+1}.png",
+            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.png",
         )
         fig_reconstructed = model.generate_reconstucted_samples(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_RECON_FILE_PREFIX}{epoch+1}.png",
+            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.png",
         )
         fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
-            save_to_file_mse=f"{LOSS_PREFIX}mse_{epoch+1}.json",
-            save_to_file_total=f"{LOSS_PREFIX}total_{epoch+1}.json",
+            save_to_file_mse=f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
+            save_to_file_total=f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
         )
 
     create_model_files(

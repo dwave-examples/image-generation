@@ -40,9 +40,6 @@ from .utils.common import get_latent_to_discrete, get_sampler_and_sampler_kwargs
 from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
 
-IMAGE_PATH = Path("generated_images")
-
-
 def train_dvae(opt_step: int, epoch: int) -> bool:
     """Schedule for training the DVAE.
 
@@ -390,7 +387,7 @@ class ModelWrapper:
         fig.update_layout(margin={"t": 0,"l": 0,"b": 0,"r": 0})
 
         if save_to_file:
-            fig.write_image(f"{IMAGE_PATH}/{save_to_file}", width=1000, height=1000)
+            fig.write_image(save_to_file, width=1000, height=1000)
 
         return fig
 
@@ -422,11 +419,11 @@ class ModelWrapper:
         fig_total.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         if save_to_file_mse:
-            with open(IMAGE_PATH / save_to_file_mse, "w") as f:
+            with open(save_to_file_mse, "w") as f:
                 f.write(fig_mse.to_json())
 
         if save_to_file_total:
-            with open(IMAGE_PATH / save_to_file_total, "w") as f:
+            with open(save_to_file_total, "w") as f:
                 f.write(fig_total.to_json())
 
         return fig_mse, fig_total
@@ -470,6 +467,6 @@ class ModelWrapper:
         fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         if save_to_file:
-            fig.write_image(f"{IMAGE_PATH}/{save_to_file}", width=1000, height=1000)
+            fig.write_image(save_to_file, width=1000, height=1000)
 
         return fig
