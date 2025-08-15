@@ -34,7 +34,7 @@ from demo_interface import SOLVERS, generate_model_data, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
-IMAGE_FILE_DIR = "generated_images"
+JSON_FILE_DIR = "generated_json"
 IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
@@ -269,22 +269,22 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
 
 
 @dash.callback(
-    Output("last-saved-image-id", "data", allow_duplicate=True),
+    Output("last-saved-id", "data", allow_duplicate=True),
     inputs=[
-        Input("epoch-image-checker", "disabled"),
+        Input("epoch-checker", "disabled"),
     ],
     prevent_initial_call=True,
 )
-def reset_last_saved_image_id(epoch_image_checker_disabled: bool) -> int:
-    """Resets last-saved-image-id when epoch_image_checker interval is disabled.
+def reset_last_saved_id(epoch_checker_disabled: bool) -> int:
+    """Resets last-saved-id when epoch-checker interval is disabled.
 
     Args:
-        epoch_image_checker_disabled: Whether the image checker interval is disabled.
+        epoch_checker_disabled: Whether the checker interval is disabled.
 
     Returns:
-        last-saved-image-id: The id of the last saved image.
+        last-saved-id: The id of the last saved file.
     """
-    if epoch_image_checker_disabled:
+    if epoch_checker_disabled:
         return None
 
     raise PreventUpdate
@@ -308,14 +308,14 @@ def file_name_validation(file_name: str) -> bool:
     return not file_name
 
 
-class UpdateImageEachEpochReturn(NamedTuple):
-    """Return type for the ``update_image_each_epoch`` callback function."""
+class UpdateEachEpochReturn(NamedTuple):
+    """Return type for the ``update_each_epoch`` callback function."""
 
     fig_generated: go.Figure = dash.no_update
     fig_reconstructed: go.Figure = dash.no_update
     fig_mse_loss: go.Figure = dash.no_update
     fig_total_loss: go.Figure = dash.no_update
-    last_saved_image_id: int = dash.no_update
+    last_saved_id: int = dash.no_update
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
     tabs_value: str = dash.no_update
@@ -325,55 +325,55 @@ class UpdateImageEachEpochReturn(NamedTuple):
     Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
     Output("fig-total-loss", "figure", allow_duplicate=True),
-    Output("last-saved-image-id", "data"),
+    Output("last-saved-id", "data"),
     Output("results-tab", "disabled"),
     Output("loss-tab", "disabled"),
     Output("tabs", "value"),
     inputs=[
-        Input("epoch-image-checker", "n_intervals"),
-        State("last-saved-image-id", "data"),
+        Input("epoch-checker", "n_intervals"),
+        State("last-saved-id", "data"),
     ],
     prevent_initial_call=True,
 )
-def update_image_each_epoch(
-    epoch_image_checker: int, last_saved_image_id: int
-) -> UpdateImageEachEpochReturn:
-    """Updates image after each epoch.
+def update_each_epoch(
+    epoch_checker: int, last_saved_id: int
+) -> UpdateEachEpochReturn:
+    """Updates visuals after each epoch.
 
     Args:
-        epoch_image_checker: An interval that fires to check whether a new image has been generated.
-        last_saved_image_id: The ID of the image that was last saved.
+        epoch_checker: An interval that fires to check whether new files have been generated.
+        last_saved_id: The ID of the file that was last saved.
         
     Returns:
-        UpdateImageEachEpochReturn named tuple:
+        UpdateEachEpochReturn named tuple:
             fig_generated: The generated image output.
             fig_reconstructed: The image comparing the reconstructed image to the original.
             fig_mse_loss: The graph showing the MSE Loss.
             fig_total_loss: The graph showing the total Loss (MMD + MSE).
-            last_saved_image_id: The ID of the image that was last saved.
+            last_saved_id: The ID of the file that was last saved.
             results_tab_disabled: Whether the results tab should be disabled.
             loss_tab_disabled: Whether the loss tab should be disabled.
             tabs_value: The tab that should be active.
     """
     
-    if last_saved_image_id is None:
-        image_path = Path(IMAGE_FILE_DIR)
-        image_path.mkdir(exist_ok=True)
-        for file in image_path.iterdir():
+    if last_saved_id is None:
+        json_path = Path(JSON_FILE_DIR)
+        json_path.mkdir(exist_ok=True)
+        for file in json_path.iterdir():
             file.unlink()  # Delete all files on first iteration.
 
-        return UpdateImageEachEpochReturn(
-            last_saved_image_id=0,
+        return UpdateEachEpochReturn(
+            last_saved_id=0,
             results_tab_disabled=True,
             loss_tab_disabled=True,
             tabs_value="input-tab",
         )
 
-    new_image_id = last_saved_image_id+1
-    image_gen_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_image_id}.json"
-    image_recon_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_image_id}.json"
-    loss_mse_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{new_image_id}.json"
-    loss_total_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}total_{new_image_id}.json"
+    new_file_id = last_saved_id+1
+    image_gen_file_path = f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_file_id}.json"
+    image_recon_file_path = f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_file_id}.json"
+    loss_mse_file_path = f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{new_file_id}.json"
+    loss_total_file_path = f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{new_file_id}.json"
 
     try:
         with open(image_gen_file_path, "r") as f:
@@ -389,18 +389,18 @@ def update_image_each_epoch(
             fig_total_json = json.load(f)
             fig_total = pio.from_json(json.dumps(fig_total_json))
 
-        return UpdateImageEachEpochReturn(
+        return UpdateEachEpochReturn(
             fig_generated=fig_gen,
             fig_reconstructed=fig_recon,
             fig_mse_loss=fig_mse,
             fig_total_loss=fig_total,
-            last_saved_image_id=new_image_id,
+            last_saved_id=new_file_id,
             results_tab_disabled=False,
             loss_tab_disabled=False,
         )
 
     except:
-        # No image found, this is expected behavior before the epoch has finished.
+        # No file found, this is expected behavior before the epoch has finished.
         raise PreventUpdate
     
 
@@ -426,7 +426,7 @@ def update_image_each_epoch(
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
         (Output("results-tab", "label"), "Loading...", "Generated Images"),
         (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
-        (Output("epoch-image-checker", "disabled"), False, True),
+        (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
     progress=[
@@ -484,15 +484,15 @@ def train(
 
         fig_output = model.generate_output(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
         )
         fig_reconstructed = model.generate_reconstucted_samples(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
         )
         fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
-            save_to_file_mse=f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
-            save_to_file_total=f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
+            save_to_file_mse=f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
+            save_to_file_total=f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
         )
 
     create_model_files(
