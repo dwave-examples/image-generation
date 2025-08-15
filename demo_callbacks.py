@@ -395,6 +395,7 @@ def update_image_each_epoch(
     
     if last_saved_image_id is None:
         image_path = Path(IMAGE_FILE_DIR)
+        image_path.mkdir(exist_ok=True)
         for file in image_path.iterdir():
             file.unlink()  # Delete all files on first iteration.
 
