@@ -319,6 +319,8 @@ class UpdateEachEpochReturn(NamedTuple):
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
     tabs_value: str = dash.no_update
+    results_tab_label: str = dash.no_update
+    loss_tab_label: str = dash.no_update
 
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
@@ -329,6 +331,8 @@ class UpdateEachEpochReturn(NamedTuple):
     Output("results-tab", "disabled"),
     Output("loss-tab", "disabled"),
     Output("tabs", "value"),
+    Output("results-tab", "label"),
+    Output("loss-tab", "label"),
     inputs=[
         Input("epoch-checker", "n_intervals"),
         State("last-saved-id", "data"),
@@ -354,6 +358,8 @@ def update_each_epoch(
             results_tab_disabled: Whether the results tab should be disabled.
             loss_tab_disabled: Whether the loss tab should be disabled.
             tabs_value: The tab that should be active.
+            results_tab_label: The label for the results tab.
+            loss_tab_label: The label for the loss tab.
     """
     
     if last_saved_id is None:
@@ -397,6 +403,8 @@ def update_each_epoch(
             last_saved_id=new_file_id,
             results_tab_disabled=False,
             loss_tab_disabled=False,
+            results_tab_label=f"Generated Images (after {new_file_id} epochs)",
+            loss_tab_label=f"Loss Graphs (after {new_file_id} epochs)",
         )
 
     except:
@@ -424,8 +432,8 @@ def update_each_epoch(
         (Output("cancel-training-button", "className"), "", "display-none"),
         (Output("train-button", "className"), "display-none", ""),
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
-        (Output("results-tab", "label"), "Loading...", "Generated Images"),
-        (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
+        (Output("results-tab", "label"), "Running...", "Generated Images"),
+        (Output("loss-tab", "label"), "Running...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
