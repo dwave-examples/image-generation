@@ -19,18 +19,25 @@ import math
 import os
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 import dash
 from dash import MATCH
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
+import plotly.io as pio
 
 from demo_configs import SHARPEN_OUTPUT
 from demo_interface import SOLVERS, generate_model_data, generate_options
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
+JSON_FILE_DIR = "generated_json"
+IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
+IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
+LOSS_PREFIX = "loss_"
 
 
 def create_model_files(
@@ -262,9 +269,154 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
 
 
 @dash.callback(
+    Output("last-saved-id", "data", allow_duplicate=True),
+    inputs=[
+        Input("epoch-checker", "disabled"),
+    ],
+    prevent_initial_call=True,
+)
+def reset_last_saved_id(epoch_checker_disabled: bool) -> int:
+    """Resets last-saved-id when epoch-checker interval is disabled.
+
+    Args:
+        epoch_checker_disabled: Whether the checker interval is disabled.
+
+    Returns:
+        last-saved-id: The id of the last saved file.
+    """
+    if epoch_checker_disabled:
+        return None
+
+    raise PreventUpdate
+
+
+@dash.callback(
+    Output("train-button", "disabled"),
+    inputs=[
+        Input("file-name", "value"),
+    ],
+)
+def file_name_validation(file_name: str) -> bool:
+    """Disables run button if no filename.
+
+    Args:
+        file_name: The value of the file name input.
+
+    Returns:
+        train-button-disabled: Whether the train button should be disabled.
+    """
+    return not file_name
+
+
+class UpdateEachEpochReturn(NamedTuple):
+    """Return type for the ``update_each_epoch`` callback function."""
+
+    fig_generated: go.Figure = dash.no_update
+    fig_reconstructed: go.Figure = dash.no_update
+    fig_mse_loss: go.Figure = dash.no_update
+    fig_total_loss: go.Figure = dash.no_update
+    last_saved_id: int = dash.no_update
+    results_tab_disabled: bool = dash.no_update
+    loss_tab_disabled: bool = dash.no_update
+    tabs_value: str = dash.no_update
+    results_tab_label: str = dash.no_update
+    loss_tab_label: str = dash.no_update
+
+@dash.callback(
+    Output("fig-output", "figure", allow_duplicate=True),
+    Output("fig-reconstructed", "figure", allow_duplicate=True),
+    Output("fig-mse-loss", "figure", allow_duplicate=True),
+    Output("fig-total-loss", "figure", allow_duplicate=True),
+    Output("last-saved-id", "data"),
+    Output("results-tab", "disabled"),
+    Output("loss-tab", "disabled"),
+    Output("tabs", "value"),
+    Output("results-tab", "label"),
+    Output("loss-tab", "label"),
+    inputs=[
+        Input("epoch-checker", "n_intervals"),
+        State("last-saved-id", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_each_epoch(
+    epoch_checker: int, last_saved_id: int
+) -> UpdateEachEpochReturn:
+    """Updates visuals after each epoch.
+
+    Args:
+        epoch_checker: An interval that fires to check whether new files have been generated.
+        last_saved_id: The ID of the file that was last saved.
+        
+    Returns:
+        UpdateEachEpochReturn named tuple:
+            fig_generated: The generated image output.
+            fig_reconstructed: The image comparing the reconstructed image to the original.
+            fig_mse_loss: The graph showing the MSE Loss.
+            fig_total_loss: The graph showing the total Loss (MMD + MSE).
+            last_saved_id: The ID of the file that was last saved.
+            results_tab_disabled: Whether the results tab should be disabled.
+            loss_tab_disabled: Whether the loss tab should be disabled.
+            tabs_value: The tab that should be active.
+            results_tab_label: The label for the results tab.
+            loss_tab_label: The label for the loss tab.
+    """
+    
+    if last_saved_id is None:
+        json_path = Path(JSON_FILE_DIR)
+        json_path.mkdir(exist_ok=True)
+        for file in json_path.iterdir():
+            file.unlink()  # Delete all files on first iteration.
+
+        return UpdateEachEpochReturn(
+            last_saved_id=0,
+            results_tab_disabled=True,
+            loss_tab_disabled=True,
+            tabs_value="input-tab",
+        )
+
+    new_file_id = last_saved_id+1
+    image_gen_file_path = f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_file_id}.json"
+    image_recon_file_path = f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_file_id}.json"
+    loss_mse_file_path = f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{new_file_id}.json"
+    loss_total_file_path = f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{new_file_id}.json"
+
+    try:
+        with open(image_gen_file_path, "r") as f:
+            fig_gen_json = json.load(f)
+            fig_gen = pio.from_json(json.dumps(fig_gen_json))
+        with open(image_recon_file_path, "r") as f:
+            fig_recon_json = json.load(f)
+            fig_recon = pio.from_json(json.dumps(fig_recon_json))
+        with open(loss_mse_file_path, "r") as f:
+            fig_mse_json = json.load(f)
+            fig_mse = pio.from_json(json.dumps(fig_mse_json))
+        with open(loss_total_file_path, "r") as f:
+            fig_total_json = json.load(f)
+            fig_total = pio.from_json(json.dumps(fig_total_json))
+
+        return UpdateEachEpochReturn(
+            fig_generated=fig_gen,
+            fig_reconstructed=fig_recon,
+            fig_mse_loss=fig_mse,
+            fig_total_loss=fig_total,
+            last_saved_id=new_file_id,
+            results_tab_disabled=False,
+            loss_tab_disabled=False,
+            results_tab_label=f"Generated Images (after {new_file_id} epochs)",
+            loss_tab_label=f"Loss Graphs (after {new_file_id} epochs)",
+        )
+
+    except:
+        # No file found, this is expected behavior before the epoch has finished.
+        raise PreventUpdate
+    
+
+
+@dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
-    Output("fig-other-loss", "figure", allow_duplicate=True),
+    Output("fig-total-loss", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("last-trained-model", "data"),
     Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
@@ -279,12 +431,10 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
     running=[
         (Output("cancel-training-button", "className"), "", "display-none"),
         (Output("train-button", "className"), "display-none", ""),
-        (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
-        (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
-        (Output("results-tab", "label"), "Loading...", "Generated Images"),
-        (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
-        (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
+        (Output("results-tab", "label"), "Running...", "Generated Images"),
+        (Output("loss-tab", "label"), "Running...", "Loss Graphs"),
+        (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
     progress=[
@@ -315,7 +465,7 @@ def train(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the total Loss (MMD + MSE).
+            fig-total-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
@@ -340,6 +490,19 @@ def train(
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
 
+        fig_output = model.generate_output(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
+        )
+        fig_reconstructed = model.generate_reconstucted_samples(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
+        )
+        fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
+            save_to_file_mse=f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
+            save_to_file_total=f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
+        )
+
     create_model_files(
         model,
         file_name,
@@ -351,11 +514,6 @@ def train(
             "dvae_losses": model.losses["dvae_losses"],
         },
     )
-
-    fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
-    fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
-
-    fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
     return (
         fig_output,
@@ -370,7 +528,7 @@ def train(
 @dash.callback(
     Output("fig-output", "figure"),
     Output("fig-mse-loss", "figure"),
-    Output("fig-other-loss", "figure"),
+    Output("fig-total-loss", "figure"),
     Output("fig-reconstructed", "figure"),
     Output("popup", "className", allow_duplicate=True),
     Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
@@ -423,7 +581,7 @@ def generate(
 
             fig-output: The generated image output.
             fig-mse-loss: The graph showing the MSE Loss.
-            fig-other-loss: The graph showing the total Loss (MMD + MSE).
+            fig-total-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
             progress-wrapper-className: The classname of the progress wrapper.
     """
