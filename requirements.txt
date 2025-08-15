@@ -2,7 +2,6 @@ dash[diskcache]~=3.0
 dwave-ocean-sdk~=8.4
 dwave-pytorch-plugin~=0.2
 einops~=0.8
-kaleido~=1.0
 matplotlib~=3.10
 pyyaml~=6.0
 torch~=2.7

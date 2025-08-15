@@ -28,7 +28,6 @@ from dash.exceptions import PreventUpdate
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
 import plotly.io as pio
-from PIL import Image
 
 from demo_configs import SHARPEN_OUTPUT
 from demo_interface import SOLVERS, generate_model_data, generate_options
@@ -79,42 +78,6 @@ def create_model_files(
 
     with open(MODEL_PATH / file_name / "losses.json", "w") as f:
         json.dump(loss_data, f)
-
-
-def create_image_fig(image_path: str) -> go.Figure:
-    """Creates a figure given an image file path.
-
-    Args:
-        image_path: The location of the image.
-
-    Returns:
-        fig: A Plotly figure of the image.
-
-    """
-    image = Image.open(image_path)
-    fig = go.Figure()
-
-    fig.update_layout(
-        width=1000,
-        height=1000,
-        margin={"l": 0, "r": 0, "t": 0, "b": 0},
-        xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 1]),
-        yaxis=dict(showgrid=False, zeroline=False, visible=False, scaleanchor="x", range=[0, 1]),
-        images=[
-            dict(
-                source=image,
-                xref="x",
-                yref="y",
-                x=0,
-                y=1,
-                sizex=1,
-                sizey=1,
-                layer="below"
-            )
-        ]
-    )
-
-    return fig
 
 
 @dash.callback(
@@ -407,15 +370,18 @@ def update_image_each_epoch(
         )
 
     new_image_id = last_saved_image_id+1
-    image_gen_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_image_id}.png"
-    image_recon_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_image_id}.png"
+    image_gen_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_image_id}.json"
+    image_recon_file_path = f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_image_id}.json"
     loss_mse_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{new_image_id}.json"
     loss_total_file_path = f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}total_{new_image_id}.json"
 
     try:
-        fig_gen = create_image_fig(image_gen_file_path)
-        fig_recon = create_image_fig(image_recon_file_path)
-
+        with open(image_gen_file_path, "r") as f:
+            fig_gen_json = json.load(f)
+            fig_gen = pio.from_json(json.dumps(fig_gen_json))
+        with open(image_recon_file_path, "r") as f:
+            fig_recon_json = json.load(f)
+            fig_recon = pio.from_json(json.dumps(fig_recon_json))
         with open(loss_mse_file_path, "r") as f:
             fig_mse_json = json.load(f)
             fig_mse = pio.from_json(json.dumps(fig_mse_json))
@@ -518,11 +484,11 @@ def train(
 
         fig_output = model.generate_output(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.png",
+            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
         )
         fig_reconstructed = model.generate_reconstucted_samples(
             sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.png",
+            save_to_file=f"{IMAGE_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
         )
         fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
             save_to_file_mse=f"{IMAGE_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",

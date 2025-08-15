@@ -387,7 +387,8 @@ class ModelWrapper:
         fig.update_layout(margin={"t": 0,"l": 0,"b": 0,"r": 0})
 
         if save_to_file:
-            fig.write_image(save_to_file, width=1000, height=1000)
+            with open(save_to_file, "w") as f:
+                f.write(fig.to_json())
 
         return fig
 
@@ -467,6 +468,7 @@ class ModelWrapper:
         fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         if save_to_file:
-            fig.write_image(save_to_file, width=1000, height=1000)
+            with open(save_to_file, "w") as f:
+                f.write(fig.to_json())
 
         return fig
