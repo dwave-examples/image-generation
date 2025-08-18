@@ -30,11 +30,12 @@ from plotly import graph_objects as go
 import plotly.io as pio
 
 from demo_configs import SHARPEN_OUTPUT
-from demo_interface import SOLVERS, generate_model_data, generate_options
+from demo_interface import SOLVERS, generate_model_data, generate_options, problem_details_table
 from src.model_wrapper import ModelWrapper
 
 MODEL_PATH = Path("models")
 JSON_FILE_DIR = "generated_json"
+PROBLEM_DETAILS_PATH = f"{JSON_FILE_DIR}/problem_details.json"
 IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
@@ -78,6 +79,74 @@ def create_model_files(
 
     with open(MODEL_PATH / file_name / "losses.json", "w") as f:
         json.dump(loss_data, f)
+
+
+def execute_training(
+    set_progress,
+    model: DiscreteVariationalAutoencoder,
+    n_epochs: int,
+    qpu: str,
+    n_latents: int,
+    loss_data: list=[],
+) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
+    """Orchestrates training or tuning of model.
+
+    Args:
+        model: The DVAE model.
+        n_epochs: The number of epochs to run training for.
+        qpu: The selected QPU.
+        n_latents: The size of the latent space for the training.
+        loss_data: Old loss data from previous training.
+
+    Returns:
+        fig_output: The generated image output.
+        fig_reconstructed: The image comparing the reconstructed image to the original.
+        fig_mse_loss: The graph showing the MSE Loss.
+        fig_total_loss: The graph showing the total Loss (MMD + MSE).
+    """
+    for epoch in range(n_epochs):
+        start_time = time.perf_counter()
+        print(f"Starting epoch {epoch + 1}/{n_epochs}")
+
+        total = len(model._dataloader)
+        for i, batch in enumerate(model._dataloader):
+            set_progress((str(total * epoch + i), str(total * n_epochs)))
+            mse_loss = model.step(batch, epoch)
+
+        learning_rate_dvae = model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]
+        learning_rate_grbm = model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]
+        print(
+            f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
+            f'Learning rate DVAE: {learning_rate_dvae:.3E} '
+            f'Learning rate GRBM: {learning_rate_grbm:.3E} '
+            f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
+        )
+        with open(PROBLEM_DETAILS_PATH, "w") as f:
+            json.dump({
+                "QPU": qpu,
+                "Epoch": f"{epoch + 1}/{n_epochs}",
+                "Batch Size": total,
+                "Latents": n_latents,
+                "Learning rate DVAE": f"{learning_rate_dvae:.3E}",
+                "Learning rate GRBM": f"{learning_rate_grbm:.3E}",
+                "Mean Squared Error Loss": f"{mse_loss.item():.4f}",
+            }, f)
+
+        fig_output = model.generate_output(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
+        )
+        fig_reconstructed = model.generate_reconstucted_samples(
+            sharpen=SHARPEN_OUTPUT,
+            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
+        )
+        fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
+            save_to_file_mse=f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
+            save_to_file_total=f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
+            old_loss_data=loss_data,
+        )
+
+    return fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss
 
 
 @dash.callback(
@@ -321,6 +390,7 @@ class UpdateEachEpochReturn(NamedTuple):
     tabs_value: str = dash.no_update
     results_tab_label: str = dash.no_update
     loss_tab_label: str = dash.no_update
+    problem_details_table: list = dash.no_update
 
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
@@ -333,6 +403,7 @@ class UpdateEachEpochReturn(NamedTuple):
     Output("tabs", "value"),
     Output("results-tab", "label"),
     Output("loss-tab", "label"),
+    Output("problem-details", "children"),
     inputs=[
         Input("epoch-checker", "n_intervals"),
         State("last-saved-id", "data"),
@@ -360,6 +431,7 @@ def update_each_epoch(
             tabs_value: The tab that should be active.
             results_tab_label: The label for the results tab.
             loss_tab_label: The label for the loss tab.
+            problem_details_table: The html for a table outlining the details each epoch.
     """
     
     if last_saved_id is None:
@@ -394,6 +466,8 @@ def update_each_epoch(
         with open(loss_total_file_path, "r") as f:
             fig_total_json = json.load(f)
             fig_total = pio.from_json(json.dumps(fig_total_json))
+        with open(PROBLEM_DETAILS_PATH, "r") as f:
+            problem_details = json.load(f)
 
         return UpdateEachEpochReturn(
             fig_generated=fig_gen,
@@ -403,8 +477,9 @@ def update_each_epoch(
             last_saved_id=new_file_id,
             results_tab_disabled=False,
             loss_tab_disabled=False,
-            results_tab_label=f"Generated Images (after {new_file_id} epochs)",
-            loss_tab_label=f"Loss Graphs (after {new_file_id} epochs)",
+            results_tab_label=f"Generated Images (after {new_file_id} epoch{'s'[:new_file_id^1]})",
+            loss_tab_label=f"Loss Graphs (after {new_file_id} epoch{'s'[:new_file_id^1]})",
+            problem_details_table=problem_details_table(problem_details)
         )
 
     except:
@@ -432,8 +507,8 @@ def update_each_epoch(
         (Output("cancel-training-button", "className"), "", "display-none"),
         (Output("train-button", "className"), "display-none", ""),
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
-        (Output("results-tab", "label"), "Running...", "Generated Images"),
-        (Output("loss-tab", "label"), "Running...", "Loss Graphs"),
+        (Output("results-tab", "label"), "Training...", "Generated Images"),
+        (Output("loss-tab", "label"), "Training...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
@@ -445,7 +520,7 @@ def update_each_epoch(
 )
 def train(
     set_progress, train_click: int, qpu: str, n_latents: int, n_epochs: int, file_name: str
-) -> tuple[go.Figure, go.Figure, go.Figure, str]:
+) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure, str, str]:
     """Runs training and updates UI accordingly.
 
     This function is called when the ``Train`` button is clicked. It takes in all form values and
@@ -456,7 +531,7 @@ def train(
         train_click: The (total) number of times the train button has been clicked.
         qpu: The selected QPU.
         n_latents: The value of the latents setting.
-        n_epochs: The value of th epochs setting
+        n_epochs: The value of the epochs setting.
         file_name: The file name to save to.
 
     Returns:
@@ -473,35 +548,9 @@ def train(
     model = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
     model.train_init(n_epochs)
-
-    for epoch in range(n_epochs):
-        start_time = time.perf_counter()
-        print(f"Starting epoch {epoch + 1}/{n_epochs}")
-
-        total = len(model._dataloader)
-        for i, batch in enumerate(model._dataloader):
-            set_progress((str(total * epoch + i), str(total * n_epochs)))
-            mse_loss = model.step(batch, epoch)
-
-        print(
-            f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
-            f'Learning rate DVAE: {model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]:.3E} '
-            f'Learning rate GRBM: {model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]:.3E} '
-            f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
-        )
-
-        fig_output = model.generate_output(
-            sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
-        )
-        fig_reconstructed = model.generate_reconstucted_samples(
-            sharpen=SHARPEN_OUTPUT,
-            save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
-        )
-        fig_mse_loss, fig_dvae_loss = model.generate_loss_plot(
-            save_to_file_mse=f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{epoch+1}.json",
-            save_to_file_total=f"{JSON_FILE_DIR}/{LOSS_PREFIX}total_{epoch+1}.json",
-        )
+    fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
+        set_progress, model, n_epochs, qpu, n_latents
+    )
 
     create_model_files(
         model,
@@ -542,12 +591,10 @@ def train(
     running=[
         (Output("cancel-generation-button", "className"), "", "display-none"),
         (Output("generate-button", "className"), "display-none", ""),
-        (Output("results-tab", "disabled"), True, False),  # Disables results tab while running.
-        (Output("loss-tab", "disabled"), True, False),  # Disables loss tab while running.
         (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
-        (Output("results-tab", "label"), "Loading...", "Generated Images"),
-        (Output("loss-tab", "label"), "Loading...", "Loss Graphs"),
-        (Output("tabs", "value"), "input-tab", "input-tab"),  # Switch to input tab while running.
+        (Output("results-tab", "label"), "Generating...", "Generated Images"),
+        (Output("loss-tab", "label"), "Generating...", "Loss Graphs"),
+        (Output("epoch-checker", "disabled"), False, True),
     ],
     progress=[
         Output({"type": "progress", "index": 1}, "value"),
@@ -562,7 +609,7 @@ def generate(
     model_file_name: str,
     tune_parameters: list,
     n_epochs: int,
-) -> tuple[go.Figure, go.Figure, go.Figure]:
+) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure, str, str]:
     """Runs generation and updates UI accordingly.
 
     This function is called when the ``Generate`` button is clicked. It takes in all form values and
@@ -583,6 +630,7 @@ def generate(
             fig-mse-loss: The graph showing the MSE Loss.
             fig-total-loss: The graph showing the total Loss (MMD + MSE).
             fig-reconstructed: The image comparing the reconstructed image to the original.
+            popup-className: The classname of the error popup.
             progress-wrapper-className: The classname of the progress wrapper.
     """
     # load autoencoder model and config
@@ -592,30 +640,16 @@ def generate(
         loss_data = json.load(file)
 
     if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return dash.no_update, dash.no_update, dash.no_update, "", "visibility-hidden"
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, "", "visibility-hidden"
 
     model = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
     model.load(file_path=MODEL_PATH / model_file_name)
 
     if tune_parameters:
         model.train_init(n_epochs)
-
-        for epoch in range(n_epochs):
-            start_time = time.perf_counter()
-            print(f"Starting epoch {epoch + 1}/{n_epochs}")
-
-            total = len(model._dataloader)
-            for i, batch in enumerate(model._dataloader):
-                print(f"{i}/{total}")
-                set_progress((str(total * epoch + i), str(total * n_epochs)))
-                mse_loss = model.step(batch, epoch)
-
-            print(
-                f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
-                f'Learning rate DVAE: {model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]:.3E} '
-                f'Learning rate GRBM: {model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]:.3E} '
-                f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
-            )
+        fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
+            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data
+        )
 
         model_file_name += f"_tuned_{n_epochs}_epochs"
 
@@ -628,12 +662,12 @@ def generate(
             model, model_file_name, model_data["qpu"], model_data["n_latents"], n_epochs, loss_data
         )
 
-    fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
+    else:
+        fig_output = model.generate_output(sharpen=SHARPEN_OUTPUT)
+        fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
     model.losses = loss_data
     fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
-
-    fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
 
     return (
         fig_output,

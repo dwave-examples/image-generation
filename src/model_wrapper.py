@@ -392,15 +392,24 @@ class ModelWrapper:
 
         return fig
 
-    def generate_loss_plot(self, save_to_file_mse: str="", save_to_file_total: str="") -> tuple[go.Figure, go.Figure]:
+    def generate_loss_plot(
+        self,
+        save_to_file_mse: str="",
+        save_to_file_total: str="",
+        old_loss_data: list=[],
+    ) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
 
         Returns:
             go.Figure: The Mean Squared Error losses plot.
             go.Figure: The total losses plot.
         """
-        mse_losses = self.losses["mse_losses"]
-        dvae_losses = self.losses["dvae_losses"]
+        if old_loss_data:
+            mse_losses = old_loss_data["mse_losses"] + self.losses["mse_losses"]
+            dvae_losses = old_loss_data["dvae_losses"] + self.losses["dvae_losses"]
+        else:
+            mse_losses = self.losses["mse_losses"]
+            dvae_losses = self.losses["dvae_losses"]
 
         fig_mse = go.Figure()
         fig_total = go.Figure()

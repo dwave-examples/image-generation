@@ -352,79 +352,23 @@ def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
     )
 
 
-def generate_problem_details_table_rows(solver: str, time_limit: int) -> list[html.Tr]:
-    """Generates table rows for the problem details table.
+def problem_details_table(details: dict) -> html.Table:
+    """Generate the problem details table.
 
     Args:
-        solver: The solver used for optimization.
-        time_limit: The solver time limit.
+        details: A dict containing the details to display in the table with headers as keys
+            and content as values.
 
     Returns:
-        list[html.Tr]: List of rows for the problem details table.
+        html.Table: The table containing the problem details.
     """
-
-    table_rows = (
-        ("Solver:", solver, "Time Limit:", f"{time_limit}s"),
-        ### Add more table rows here. Each tuple is a row in the table.
-    )
-
-    return [html.Tr([html.Td(cell) for cell in row]) for row in table_rows]
-
-
-def problem_details(index: int) -> html.Div:
-    """Generate the problem details section.
-
-    Args:
-        index: Unique element id to differentiate matching elements.
-            Must be different from left column collapse button.
-
-    Returns:
-        html.Div: Div containing a collapsable table.
-    """
-    return html.Div(
-        id={"type": "to-collapse-class", "index": index},
-        className="details-collapse-wrapper collapsed",
-        children=[
-            # Problem details collapsible button and header
-            html.Button(
-                id={"type": "collapse-trigger", "index": index},
-                className="details-collapse",
-                children=[
-                    html.H5("Problem Details"),
-                    html.Div(className="collapse-arrow"),
-                ],
-            ),
-            html.Div(
-                className="details-to-collapse",
-                children=[
-                    html.Table(
-                        className="solution-stats-table",
-                        children=[
-                            # Problem details table header (optional)
-                            html.Thead(
-                                [
-                                    html.Tr(
-                                        [
-                                            html.Th(
-                                                colSpan=2,
-                                                children=["Problem Specifics"],
-                                            ),
-                                            html.Th(
-                                                colSpan=2,
-                                                children=["Run Time"],
-                                            ),
-                                        ]
-                                    )
-                                ]
-                            ),
-                            # A Dash callback function will generate content in Tbody
-                            html.Tbody(id="problem-details"),
-                        ],
-                    ),
-                ],
-            ),
-        ],
-    )
+    return html.Table(
+            className="problem-details-table",
+            children=[
+                html.Thead([html.Tr([html.Th(header) for header in details.keys()])]),
+                html.Tbody([html.Tr([html.Td(detail) for detail in details.values()])]),
+            ],
+        )
 
 
 def create_interface():
@@ -565,6 +509,7 @@ def create_interface():
                                                             ),
                                                         ],
                                                     ),
+                                                    html.Div(id="problem-details"),
                                                 ],
                                             )
                                         ],
