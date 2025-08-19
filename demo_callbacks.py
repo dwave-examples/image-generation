@@ -19,7 +19,7 @@ import math
 import os
 import time
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import dash
 from dash import MATCH
@@ -87,7 +87,7 @@ def execute_training(
     n_epochs: int,
     qpu: str,
     n_latents: int,
-    loss_data: list=[],
+    loss_data: Optional[list]=None,
 ) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
     """Orchestrates training or tuning of model.
 

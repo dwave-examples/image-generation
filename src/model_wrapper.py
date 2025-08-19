@@ -396,7 +396,7 @@ class ModelWrapper:
         self,
         save_to_file_mse: str="",
         save_to_file_total: str="",
-        old_loss_data: list=[],
+        old_loss_data: Optional[list]=None,
     ) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
 
