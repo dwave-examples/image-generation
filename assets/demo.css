@@ -29,14 +29,6 @@ custom CSS can be added below.
     box-sizing: border-box;
 }
 
-.solution-stats-table td:nth-child(2n) {
-    text-align: right;
-}
-
-.solution-stats-table td:nth-child(2n+1) {
-    border-right: none;
-}
-
 .input, .results {
     display: flex;
     justify-content: center;
@@ -88,7 +80,7 @@ div.left-column .tab {
 }
 
 #setting-tabs-parent .tab-content {
-    padding-top: 1rem;
+    padding-top: 0;
     padding-bottom: 2rem;
 }
 
@@ -172,4 +164,16 @@ progress::-webkit-progress-bar {
 
 .checklist label {
     font-weight: 500;
+}
+
+.problem-details-table {
+    margin-bottom: 4rem;
+}
+
+#file-name-help-text {
+    color: var(--red-dark);
+}
+
+.file-name-wrapper {
+    align-items: center;
 }

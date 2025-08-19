@@ -349,7 +349,7 @@ class ModelWrapper:
 
         return mse_loss
 
-    def generate_output(self, sharpen: bool = False) -> go.Figure:
+    def generate_output(self, sharpen: bool = False, save_to_file: str = "") -> go.Figure:
         """Generate output images from trained model.
 
         Args:
@@ -385,38 +385,62 @@ class ModelWrapper:
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
         fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+
+        if save_to_file:
+            with open(save_to_file, "w") as f:
+                f.write(fig.to_json())
+
         return fig
 
-    def generate_loss_plot(self) -> tuple[go.Figure, go.Figure]:
+    def generate_loss_plot(
+        self,
+        save_to_file_mse: str = "",
+        save_to_file_total: str = "",
+        old_loss_data: Optional[list] = None,
+    ) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
 
         Returns:
             go.Figure: The Mean Squared Error losses plot.
             go.Figure: The total losses plot.
         """
-        mse_losses = self.losses["mse_losses"]
-        dvae_losses = self.losses["dvae_losses"]
+        if old_loss_data:
+            mse_losses = old_loss_data["mse_losses"] + self.losses["mse_losses"]
+            dvae_losses = old_loss_data["dvae_losses"] + self.losses["dvae_losses"]
+        else:
+            mse_losses = self.losses["mse_losses"]
+            dvae_losses = self.losses["dvae_losses"]
 
         fig_mse = go.Figure()
-        fig_other = go.Figure()
+        fig_total = go.Figure()
 
         fig_mse.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=mse_losses))
-        fig_other.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses))
+        fig_total.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses))
 
         # Update xaxis properties
         fig_mse.update_xaxes(title_text="Batch")
         fig_mse.update_yaxes(title_text="Loss")
 
         # Update yaxis properties
-        fig_other.update_xaxes(title_text="Batch")
-        fig_other.update_yaxes(title_text="Loss")
+        fig_total.update_xaxes(title_text="Batch")
+        fig_total.update_yaxes(title_text="Loss")
 
         fig_mse.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
-        fig_other.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+        fig_total.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
-        return fig_mse, fig_other
+        if save_to_file_mse:
+            with open(save_to_file_mse, "w") as f:
+                f.write(fig_mse.to_json())
 
-    def generate_reconstucted_samples(self, sharpen: bool = False) -> go.Figure:
+        if save_to_file_total:
+            with open(save_to_file_total, "w") as f:
+                f.write(fig_total.to_json())
+
+        return fig_mse, fig_total
+
+    def generate_reconstucted_samples(
+        self, sharpen: bool = False, save_to_file: str = ""
+    ) -> go.Figure:
         """Generate reconstructed images from training data.
 
         Args:
@@ -453,5 +477,9 @@ class ModelWrapper:
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
         fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+
+        if save_to_file:
+            with open(save_to_file, "w") as f:
+                f.write(fig.to_json())
 
         return fig
