@@ -29,7 +29,7 @@ from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
 
 from demo_configs import SHARPEN_OUTPUT
-from demo_interface import SOLVERS, generate_model_data, generate_options, problem_details_table
+from demo_interface import SOLVERS, generate_model_data, generate_options, generate_problem_details_table
 from src.model_wrapper import ModelWrapper
 from src.utils.callback_helpers import (
     IMAGE_GEN_FILE_PREFIX,
@@ -380,7 +380,7 @@ def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpoch
             loss_tab_disabled=False,
             results_tab_label=f"Generated Images (after {new_file_id} epoch{'s'[:new_file_id^1]})",
             loss_tab_label=f"Loss Graphs (after {new_file_id} epoch{'s'[:new_file_id^1]})",
-            problem_details_table=problem_details_table(problem_details),
+            problem_details_table=generate_problem_details_table(problem_details),
         )
 
     except:
@@ -485,6 +485,7 @@ class GenerateReturn(NamedTuple):
     progress_wrapper_classname: str = "visibility-hidden"
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
+    problem_details_table: list = dash.no_update
 
 
 @dash.callback(
@@ -496,6 +497,7 @@ class GenerateReturn(NamedTuple):
     Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
     Output("results-tab", "disabled", allow_duplicate=True),
     Output("loss-tab", "disabled", allow_duplicate=True),
+    Output("problem-details", "children", allow_duplicate=True),
     background=True,
     inputs=[
         Input("generate-button", "n_clicks"),
@@ -549,6 +551,7 @@ def generate(
             progress_wrapper_classname: The classname of the progress wrapper.
             results_tab_disabled: Whether the results tab should be disabled.
             loss_tab_disabled: Whether the loss tab should be disabled.
+            problem_details_table: The html for a table outlining the details each epoch.
     """
     # load autoencoder model and config
     with open(MODEL_PATH / model_file_name / "parameters.json") as file:
@@ -593,4 +596,5 @@ def generate(
         fig_total_loss=fig_dvae_loss,
         results_tab_disabled=False,
         loss_tab_disabled=False,
+        problem_details_table=dash.no_update if tune_parameters else [],
     )

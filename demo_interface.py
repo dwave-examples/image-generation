@@ -362,7 +362,7 @@ def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
     )
 
 
-def problem_details_table(details: dict) -> html.Table:
+def generate_problem_details_table(details: dict) -> html.Table:
     """Generate the problem details table.
 
     Args:
