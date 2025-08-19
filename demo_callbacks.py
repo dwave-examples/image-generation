@@ -126,7 +126,7 @@ def execute_training(
             json.dump({
                 "QPU": qpu,
                 "Epoch": f"{epoch + 1}/{n_epochs}",
-                "Batch Size": total,
+                "Batch Size": model.BATCH_SIZE,
                 "Latents": n_latents,
                 "Learning rate DVAE": f"{learning_rate_dvae:.3E}",
                 "Learning rate GRBM": f"{learning_rate_grbm:.3E}",
@@ -375,6 +375,7 @@ def file_name_validation(file_name: str) -> bool:
 
     Returns:
         train-button-disabled: Whether the train button should be disabled.
+        file-name-help-text-classname: Whether to hide or show the file name help text.
     """
     if not file_name:
         return True, "display-none"
