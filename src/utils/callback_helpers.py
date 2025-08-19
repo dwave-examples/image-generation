@@ -78,7 +78,7 @@ def execute_training(
     n_epochs: int,
     qpu: str,
     n_latents: int,
-    loss_data: Optional[list]=None,
+    loss_data: Optional[list] = None,
 ) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
     """Orchestrates training or tuning of model.
 
@@ -108,20 +108,23 @@ def execute_training(
         learning_rate_grbm = model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]
         print(
             f"Epoch {epoch + 1}/{n_epochs} - MSE Loss: {mse_loss.item():.4f} - "
-            f'Learning rate DVAE: {learning_rate_dvae:.3E} '
-            f'Learning rate GRBM: {learning_rate_grbm:.3E} '
+            f"Learning rate DVAE: {learning_rate_dvae:.3E} "
+            f"Learning rate GRBM: {learning_rate_grbm:.3E} "
             f"Time: {(time.perf_counter() - start_time)/60:.2f} mins. "
         )
         with open(PROBLEM_DETAILS_PATH, "w") as f:
-            json.dump({
-                "QPU": qpu,
-                "Epoch": f"{epoch + 1}/{n_epochs}",
-                "Batch Size": model.BATCH_SIZE,
-                "Latents": n_latents,
-                "Learning rate DVAE": f"{learning_rate_dvae:.3E}",
-                "Learning rate GRBM": f"{learning_rate_grbm:.3E}",
-                "Mean Squared Error Loss": f"{mse_loss.item():.4f}",
-            }, f)
+            json.dump(
+                {
+                    "QPU": qpu,
+                    "Epoch": f"{epoch + 1}/{n_epochs}",
+                    "Batch Size": model.BATCH_SIZE,
+                    "Latents": n_latents,
+                    "Learning rate DVAE": f"{learning_rate_dvae:.3E}",
+                    "Learning rate GRBM": f"{learning_rate_grbm:.3E}",
+                    "Mean Squared Error Loss": f"{mse_loss.item():.4f}",
+                },
+                f,
+            )
 
         fig_output = model.generate_output(
             sharpen=SHARPEN_OUTPUT,

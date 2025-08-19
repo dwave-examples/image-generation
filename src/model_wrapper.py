@@ -384,7 +384,7 @@ class ModelWrapper:
 
         fig.update_xaxes(showticklabels=False)
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(margin={"t": 0,"l": 0,"b": 0,"r": 0})
+        fig.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
 
         if save_to_file:
             with open(save_to_file, "w") as f:
@@ -394,9 +394,9 @@ class ModelWrapper:
 
     def generate_loss_plot(
         self,
-        save_to_file_mse: str="",
-        save_to_file_total: str="",
-        old_loss_data: Optional[list]=None,
+        save_to_file_mse: str = "",
+        save_to_file_total: str = "",
+        old_loss_data: Optional[list] = None,
     ) -> tuple[go.Figure, go.Figure]:
         """Generate the loss plots for MSE and DVAE loss.
 
@@ -438,7 +438,9 @@ class ModelWrapper:
 
         return fig_mse, fig_total
 
-    def generate_reconstucted_samples(self, sharpen: bool = False, save_to_file: str="") -> go.Figure:
+    def generate_reconstucted_samples(
+        self, sharpen: bool = False, save_to_file: str = ""
+    ) -> go.Figure:
         """Generate reconstructed images from training data.
 
         Args:

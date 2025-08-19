@@ -231,7 +231,7 @@ def generate_train_tab() -> html.Div:
                     ),
                 ],
                 className="display-flex file-name-wrapper",
-            )
+            ),
         ],
     )
 
@@ -373,12 +373,12 @@ def problem_details_table(details: dict) -> html.Table:
         html.Table: The table containing the problem details.
     """
     return html.Table(
-            className="problem-details-table",
-            children=[
-                html.Thead([html.Tr([html.Th(header) for header in details.keys()])]),
-                html.Tbody([html.Tr([html.Td(detail) for detail in details.values()])]),
-            ],
-        )
+        className="problem-details-table",
+        children=[
+            html.Thead([html.Tr([html.Th(header) for header in details.keys()])]),
+            html.Tbody([html.Tr([html.Td(detail) for detail in details.values()])]),
+        ],
+    )
 
 
 def create_interface():

@@ -22,16 +22,25 @@ from pathlib import Path
 from typing import NamedTuple
 
 import dash
+import plotly.io as pio
 from dash import MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
-import plotly.io as pio
 
 from demo_configs import SHARPEN_OUTPUT
 from demo_interface import SOLVERS, generate_model_data, generate_options, problem_details_table
 from src.model_wrapper import ModelWrapper
-from src.utils.callback_helpers import IMAGE_GEN_FILE_PREFIX, IMAGE_RECON_FILE_PREFIX, JSON_FILE_DIR, LOSS_PREFIX, MODEL_PATH, PROBLEM_DETAILS_PATH, create_model_files, execute_training
+from src.utils.callback_helpers import (
+    IMAGE_GEN_FILE_PREFIX,
+    IMAGE_RECON_FILE_PREFIX,
+    JSON_FILE_DIR,
+    LOSS_PREFIX,
+    MODEL_PATH,
+    PROBLEM_DETAILS_PATH,
+    create_model_files,
+    execute_training,
+)
 
 
 @dash.callback(
@@ -285,6 +294,7 @@ class UpdateEachEpochReturn(NamedTuple):
     loss_tab_label: str = dash.no_update
     problem_details_table: list = dash.no_update
 
+
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
     Output("fig-reconstructed", "figure", allow_duplicate=True),
@@ -303,15 +313,13 @@ class UpdateEachEpochReturn(NamedTuple):
     ],
     prevent_initial_call=True,
 )
-def update_each_epoch(
-    epoch_checker: int, last_saved_id: int
-) -> UpdateEachEpochReturn:
+def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpochReturn:
     """Updates visuals after each epoch.
 
     Args:
         epoch_checker: An interval that fires to check whether new files have been generated.
         last_saved_id: The ID of the file that was last saved.
-        
+
     Returns:
         UpdateEachEpochReturn named tuple:
             fig_generated: The generated image output.
@@ -326,7 +334,7 @@ def update_each_epoch(
             loss_tab_label: The label for the loss tab.
             problem_details_table: The html for a table outlining the details each epoch.
     """
-    
+
     if last_saved_id is None:
         json_path = Path(JSON_FILE_DIR)
         json_path.mkdir(exist_ok=True)
@@ -340,7 +348,7 @@ def update_each_epoch(
             tabs_value="input-tab",
         )
 
-    new_file_id = last_saved_id+1
+    new_file_id = last_saved_id + 1
     image_gen_file_path = f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{new_file_id}.json"
     image_recon_file_path = f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{new_file_id}.json"
     loss_mse_file_path = f"{JSON_FILE_DIR}/{LOSS_PREFIX}mse_{new_file_id}.json"
@@ -372,13 +380,12 @@ def update_each_epoch(
             loss_tab_disabled=False,
             results_tab_label=f"Generated Images (after {new_file_id} epoch{'s'[:new_file_id^1]})",
             loss_tab_label=f"Loss Graphs (after {new_file_id} epoch{'s'[:new_file_id^1]})",
-            problem_details_table=problem_details_table(problem_details)
+            problem_details_table=problem_details_table(problem_details),
         )
 
     except:
         # No file found, this is expected behavior before the epoch has finished.
         raise PreventUpdate
-    
 
 
 @dash.callback(
@@ -478,6 +485,7 @@ class GenerateReturn(NamedTuple):
     progress_wrapper_classname: str = "visibility-hidden"
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
+
 
 @dash.callback(
     Output("fig-output", "figure"),
