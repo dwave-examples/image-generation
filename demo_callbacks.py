@@ -490,9 +490,9 @@ def update_each_epoch(
 
 @dash.callback(
     Output("fig-output", "figure", allow_duplicate=True),
+    Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("fig-mse-loss", "figure", allow_duplicate=True),
     Output("fig-total-loss", "figure", allow_duplicate=True),
-    Output("fig-reconstructed", "figure", allow_duplicate=True),
     Output("last-trained-model", "data"),
     Output({"type": "progress-wrapper", "index": 0}, "className", allow_duplicate=True),
     background=True,
@@ -539,9 +539,9 @@ def train(
         template (in ``demo_interface.py``). These are:
 
             fig-output: The generated image output.
+            fig-reconstructed: The image comparing the reconstructed image to the original.
             fig-mse-loss: The graph showing the MSE Loss.
             fig-total-loss: The graph showing the total Loss (MMD + MSE).
-            fig-reconstructed: The image comparing the reconstructed image to the original.
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
     """
@@ -566,21 +566,35 @@ def train(
 
     return (
         fig_output,
+        fig_reconstructed,
         fig_mse_loss,
         fig_dvae_loss,
-        fig_reconstructed,
         file_name,
         "visibility-hidden",
     )
 
 
+class GenerateReturn(NamedTuple):
+    """Return type for the ``generate`` callback function."""
+
+    fig_generated: go.Figure = dash.no_update
+    fig_reconstructed: go.Figure = dash.no_update
+    fig_mse_loss: go.Figure = dash.no_update
+    fig_total_loss: go.Figure = dash.no_update
+    popup_classname: str = "display-none"
+    progress_wrapper_classname: str = "visibility-hidden"
+    results_tab_disabled: bool = dash.no_update
+    loss_tab_disabled: bool = dash.no_update
+
 @dash.callback(
     Output("fig-output", "figure"),
+    Output("fig-reconstructed", "figure"),
     Output("fig-mse-loss", "figure"),
     Output("fig-total-loss", "figure"),
-    Output("fig-reconstructed", "figure"),
     Output("popup", "className", allow_duplicate=True),
     Output({"type": "progress-wrapper", "index": 1}, "className", allow_duplicate=True),
+    Output("results-tab", "disabled", allow_duplicate=True),
+    Output("loss-tab", "disabled", allow_duplicate=True),
     background=True,
     inputs=[
         Input("generate-button", "n_clicks"),
@@ -609,7 +623,7 @@ def generate(
     model_file_name: str,
     tune_parameters: list,
     n_epochs: int,
-) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure, str, str]:
+) -> GenerateReturn:
     """Runs generation and updates UI accordingly.
 
     This function is called when the ``Generate`` button is clicked. It takes in all form values and
@@ -623,15 +637,17 @@ def generate(
         n_epochs: The number of epochs for the parameter tuning.
 
     Returns:
-        A tuple containing all outputs to be used when updating the HTML
+        A named tuple, GenerateReturn, containing all outputs to be used when updating the HTML
         template (in ``demo_interface.py``). These are:
 
-            fig-output: The generated image output.
-            fig-mse-loss: The graph showing the MSE Loss.
-            fig-total-loss: The graph showing the total Loss (MMD + MSE).
-            fig-reconstructed: The image comparing the reconstructed image to the original.
-            popup-className: The classname of the error popup.
-            progress-wrapper-className: The classname of the progress wrapper.
+            fig_generated: The generated image output.
+            fig_reconstructed: The image comparing the reconstructed image to the original.
+            fig_mse_loss: The graph showing the MSE Loss.
+            fig_total_loss: The graph showing the total Loss (MMD + MSE).
+            popup_classname: The classname of the error popup.
+            progress_wrapper_classname: The classname of the progress wrapper.
+            results_tab_disabled: Whether the results tab should be disabled.
+            loss_tab_disabled: Whether the loss tab should be disabled.
     """
     # load autoencoder model and config
     with open(MODEL_PATH / model_file_name / "parameters.json") as file:
@@ -640,7 +656,7 @@ def generate(
         loss_data = json.load(file)
 
     if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, "", "visibility-hidden"
+        return GenerateReturn(popup_classname="")
 
     model = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
     model.load(file_path=MODEL_PATH / model_file_name)
@@ -669,11 +685,11 @@ def generate(
     model.losses = loss_data
     fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
 
-    return (
-        fig_output,
-        fig_mse_loss,
-        fig_dvae_loss,
-        fig_reconstructed,
-        "display-none",
-        "visibility-hidden",
+    return GenerateReturn(
+        fig_generated=fig_output,
+        fig_reconstructed=fig_reconstructed,
+        fig_mse_loss=fig_mse_loss,
+        fig_total_loss=fig_dvae_loss,
+        results_tab_disabled=False,
+        loss_tab_disabled=False,
     )
