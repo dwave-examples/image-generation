@@ -169,3 +169,11 @@ progress::-webkit-progress-bar {
 .problem-details-table {
     margin-bottom: 4rem;
 }
+
+#file-name-help-text {
+    color: var(--red-dark);
+}
+
+.file-name-wrapper {
+    align-items: center;
+}

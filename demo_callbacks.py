@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import time
 from pathlib import Path
 from typing import NamedTuple, Optional
@@ -361,6 +362,7 @@ def reset_last_saved_id(epoch_checker_disabled: bool) -> int:
 
 @dash.callback(
     Output("train-button", "disabled"),
+    Output("file-name-help-text", "className"),
     inputs=[
         Input("file-name", "value"),
     ],
@@ -374,7 +376,13 @@ def file_name_validation(file_name: str) -> bool:
     Returns:
         train-button-disabled: Whether the train button should be disabled.
     """
-    return not file_name
+    if not file_name:
+        return True, "display-none"
+
+    pattern = re.compile("^[\\w\\-]+$")  # allows for a-z A-Z 0-9 _ -
+    is_valid = pattern.match(file_name)
+
+    return not is_valid, "display-none" if is_valid else ""
 
 
 class UpdateEachEpochReturn(NamedTuple):

@@ -217,11 +217,21 @@ def generate_train_tab() -> html.Div:
                 SLIDER_EPOCHS,
             ),
             html.Label("Save to File Name"),
-            dcc.Input(
-                id="file-name",
-                type="text",
-                required=True,
-            ),
+            html.Div(
+                [
+                    dcc.Input(
+                        id="file-name",
+                        type="text",
+                        required=True,
+                    ),
+                    html.P(
+                        "Invalid file name characters",
+                        id="file-name-help-text",
+                        className="display-none",
+                    ),
+                ],
+                className="display-flex file-name-wrapper",
+            )
         ],
     )
 
