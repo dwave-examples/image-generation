@@ -23,7 +23,7 @@ from typing import NamedTuple
 
 import dash
 import plotly.io as pio
-from dash import MATCH
+from dash import ctx, MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
@@ -40,6 +40,7 @@ from src.utils.callback_helpers import (
     PROBLEM_DETAILS_PATH,
     create_model_files,
     execute_training,
+    generate_model_fig,
 )
 
 
@@ -91,29 +92,50 @@ def toggle_popup(popup_toggle: list[int]) -> str:
     Output("popup", "className"),
     Output("generate-button", "disabled"),
     Output("model-details", "children"),
+    Output("fig-qpu-graph", "figure"),
+    Output("fig-not-qpu-graph", "figure"),
     Input("model-file-name", "value"),
+    Input("qpu-setting", "value"),
+    Input("n-latents", "value"),
 )
-def check_qpu_and_update_model(model_file_name: str) -> tuple[str, bool]:
+def check_qpu_and_update_model(model_file_name: str, qpu: str, n_latents: int) -> tuple[str, bool, dict]:
     """Checks whether user has access to QPU associated with model and updates the model details
     when model changes.
 
     Args:
-        model: The currently selected model
+        model: The currently selected model.
+        qpu: The selected QPU.
 
     Returns:
         popup-classname: The class name to hide the popup.
         generate-button-disabled: Whether to disable or enable the Generate button.
         model-details-children: The model details to display.
     """
-    with open(MODEL_PATH / model_file_name / "parameters.json") as file:
-        model_data = json.load(file)
+    model_data = None
+    model_details = None
 
-    model_details = generate_model_data(model_data)
+    if not ctx.triggered_id or ctx.triggered_id == "model-file-name":
+        with open(MODEL_PATH / model_file_name / "parameters.json") as file:
+            model_data = json.load(file)
 
-    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return "", True, model_details
+        model_details = generate_model_data(model_data)
 
-    return "display-none", False, model_details
+        if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
+            return "", True, model_details, dash.no_update
+
+    fig_qpu, fig_not_qpu = generate_model_fig(
+        qpu,
+        model_data["n_latents"] if model_data else n_latents,
+        model_data["random_seed"] if model_data else 4,
+    )
+
+    return (
+        "display-none",
+        False,
+        model_details if model_details else dash.no_update,
+        fig_qpu,
+        fig_not_qpu
+    )
 
 
 @dash.callback(

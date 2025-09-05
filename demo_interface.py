@@ -29,7 +29,8 @@ from demo_configs import (
     SLIDER_LATENTS,
     THUMBNAIL,
 )
-from src.model_wrapper import display_dataset, get_dataset
+from src.model_wrapper import get_dataset
+from src.utils.callback_helpers import display_dataset
 
 # Initialize available QPUs
 try:
@@ -49,8 +50,8 @@ def display_input_data() -> go.Figure:
     Returns:
         fig: a figure of MNIST data.
     """
-    dataset = get_dataset(32, 32 * 22)
-    fig = display_dataset(dataset, 32)
+    dataset = get_dataset(32, 8 * 16)
+    fig = display_dataset(dataset, 8)
 
     return fig
 
@@ -461,15 +462,54 @@ def create_interface():
                                         className="tab",
                                         children=[
                                             html.Div(
-                                                dcc.Graph(
-                                                    figure=display_input_data(),
-                                                    id="fig-input",
-                                                    responsive=True,
-                                                    config={
-                                                        "displayModeBar": False,
-                                                    },
-                                                ),
-                                                className="graph",
+                                                [
+                                                    html.Img(src="static/step_1_input.png"),
+                                                    html.Img(src="static/step_2_encode.png"),
+                                                    html.Div(
+                                                        [
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-qpu-graph",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False,
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-not-qpu-graph",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False,
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.Div([
+                                                                html.Div(
+                                                                    [
+                                                                        html.Div(one, className=f"latent-{'minus' if one < 0 else 'plus'}") for one in [1,-1,1,1,1,-1,-1,1,-1,1,1,-1]
+                                                                    ],
+                                                                    id="latent-space-graph"
+                                                                ),
+                                                                html.Div([html.Div(), html.Div()],className="curly-brace"),
+                                                                html.Div("256", id="latent-diagram-size")
+
+                                                            ], className="latent-vector-diagram"),
+                                                            html.Div([
+                                                                html.Div(className="arrow-left"),
+                                                                html.Div(className="arrow-right")
+
+                                                            ], className="latent-loss-arrows"),
+                                                        ],
+                                                        className="latent-space-graph-wrapper",
+                                                    ),
+                                                    html.Img(src="static/step_4_decode.png"),
+                                                    html.Img(src="static/step_5_output.png"),
+                                                ],
+                                                className="graph-model-wrapper"
                                             ),
                                         ],
                                     ),

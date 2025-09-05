@@ -86,23 +86,6 @@ def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = 
     return DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
 
-def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
-    batch = next(iter(dataset))[0]
-    reconstruction_tensor_for_plot = make_grid(batch.cpu(), nrow=num_rows)
-    fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
-
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
-    fig.update_layout(
-        margin={"t": 0, "l": 0, "b": 0, "r": 0},
-        paper_bgcolor="black",
-        plot_bgcolor="black",
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
-
-
 class TrainingError(Exception):
     """Error when training the model."""
 
