@@ -178,13 +178,15 @@ progress::-webkit-progress-bar {
     align-items: center;
 }
 
-.graph-model-wrapper > div {
+.graph-model-wrapper > .latent-space-graph-wrapper {
     width: 30%;
+    height: 100%;
 }
 
 .graph-model-wrapper {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     background-color: black;
     height: 100%;
     padding: 0 2rem;
@@ -206,18 +208,20 @@ progress::-webkit-progress-bar {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    width: 40rem;
     position: relative;
 }
 
 #latent-space-graph {
     font-size: 2rem;
-    border-left: 3px solid var(--grey-medium);
-    border-right: 3px solid var(--grey-medium);
+    border-left: 3px solid var(--theme);
+    border-right: 3px solid var(--theme);
     font-weight: 800;
     position: relative;
     padding: 0 0.5rem;
     text-align: center;
+    display: flex;
+    width: var(--latent-vector-width);
+    justify-content: space-between;
 }
 
 #latent-space-graph .latent-plus {
@@ -239,7 +243,7 @@ progress::-webkit-progress-bar {
     left: 0;
     height: 3px;
     width: 100%;
-    background: linear-gradient(to right, var(--grey-medium) 25%, transparent 25%, transparent 75%, var(--grey-medium) 75%);
+    background: linear-gradient(to right, var(--theme) 3%, transparent 3%, transparent 97%, var(--theme) 97%);
 }
 
 #latent-space-graph:after {
@@ -248,28 +252,28 @@ progress::-webkit-progress-bar {
 
 .curly-brace {
   position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
 }
 
 .curly-brace > div {
-  border-right: 5px solid var(--grey-medium);
-  margin: 0 10%;
-  height: 18rem;
-  width: 2rem;
+  border-top: 3px solid var(--theme);
+  width: calc(var(--latent-vector-width)/2 - 2rem);
+  height: 2rem;
   position: relative;
 }
 
 .curly-brace > div:first-child {
   border-top-right-radius: 2rem;
-  margin-bottom: 4rem;
 }
 
 .curly-brace > div:last-child {
-  border-bottom-right-radius: 2rem;
-  margin-top: 4rem;
+  border-top-left-radius: 2rem;
 }
 
-.curly-brace > div:last-child:before,
-.curly-brace > div:first-child:after {
+.curly-brace > div:last-child:after,
+.curly-brace > div:first-child:before {
   content: "";
   width: 2rem;
   height: 2rem;
@@ -277,43 +281,50 @@ progress::-webkit-progress-bar {
   display: block;
 }
 
-.curly-brace > div:first-child:after {  
-    border-left: 5px solid var(--grey-medium);
+.curly-brace > div:first-child:before {  
+    border-bottom: 3px solid var(--theme);
     border-bottom-left-radius: 2rem;
-    bottom: -2rem;
-    right: -2.5rem;
+    left: -2rem;
+    top: -2.3rem;
 }
 
-.curly-brace > div:last-child:before {  
-    border-left: 5px solid var(--grey-medium);
-    border-top-left-radius: 2rem;
-    top: -2rem;
-    right: -2.5rem;
+.curly-brace > div:last-child:after {  
+    border-bottom: 3px solid var(--theme);
+    border-bottom-right-radius: 2rem;
+    top: -2.3rem;
+    right: -2rem;
 }
 
 .latent-vector-diagram {
     position: absolute;
-    left: 50%;
-    display: flex;
-    align-items: center;
+    top: 45%;
+    left: calc(50% - var(--latent-vector-width)/2);
+    text-align: center;
 }
 
 #latent-diagram-size {
-    color: var(--grey-medium);
+    color: var(--theme-secondary);
     font-weight: 800;
-    margin-left: 2rem;
     font-size: 2rem;
+    margin-top: -1rem;
+}
+
+.latent-loss-arrows {
+    position: absolute;
+    display: flex;
+    justify-content: space-between;
+    width: 106%;
+    top: calc(50% - 100px);
+    left: -3%;
 }
 
 .arrow-left,
 .arrow-right {
-    border: 5px solid;
+    border: 4px solid;
     border-color: transparent transparent transparent var(--theme);
     border-radius: 50%;
-    height: 20rem;
+    height: 18rem;
     width: 10rem;
-    position: absolute;
-    top: 25%;
 }
 
 .arrow-left:after,
@@ -331,34 +342,58 @@ progress::-webkit-progress-bar {
 }
 
 .arrow-left:after {
-    border-right: 5px solid var(--theme);
-    border-bottom: 5px solid var(--theme);
-    bottom: 1.5rem;
-    left: 0;
+    border-right: 4px solid var(--theme);
+    border-bottom: 4px solid var(--theme);
+    bottom: 2rem;
+    left: 0.3rem;
 }
 
 .arrow-right:before {
     content: "";
     position: absolute;
-    border-left: 5px solid var(--theme);
-    border-top: 5px solid var(--theme);
+    border-left: 4px solid var(--theme);
+    border-top: 4px solid var(--theme);
     height: 2rem;
     width: 2rem;
-    top: 1.5rem;
-    right: 0;
+    top: 2rem;
+    right: 0.3rem;
 }
 
 .arrow-left:before,
 .arrow-right:after {
     content: "NLL";
-    font-weight: 800;
+    font-weight: 600;
     font-size: 2rem;
-    color: var(--theme);
+    color: var(--theme-secondary);
     position: absolute;
-    top: 50%;
+}
+
+.arrow-left:before {
+    left: 1rem;
+    top: -1rem;
 }
 
 .arrow-right:after {
     content: "MMD";
+    right: 1rem;
+    bottom: -1rem;
+}
+
+.forward-arrow {
+    height: 0.5rem;
+    width: 4%;
+    background-color: var(--theme);
+    position: relative;
+}
+
+.forward-arrow:after {
+    content: "";
+    position: absolute;
+    border-right: 4px solid var(--theme);
+    border-top: 4px solid var(--theme);
+    height: 1.6rem;
+    width: 1.6rem;
+    transform: rotate(45deg);
+    top: -0.7rem;
     right: 0;
 }

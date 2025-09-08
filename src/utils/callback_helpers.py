@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import random
 import time
 from pathlib import Path
 from typing import Optional
@@ -22,14 +23,11 @@ from typing import Optional
 import networkx as nx
 import dwave_networkx as dnx
 from dwave.system import DWaveSampler
-from torch.utils.data import DataLoader
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from plotly import graph_objects as go
-from torchvision.utils import make_grid
-import plotly.express as px
 
 from demo_configs import SHARPEN_OUTPUT, THEME_COLOR, THEME_COLOR_SECONDARY
-from src.utils.common import greedy_get_subgraph
+from src.utils.common import get_graph_mapping, greedy_get_subgraph
 
 MODEL_PATH = Path("models")
 JSON_FILE_DIR = "generated_json"
@@ -180,7 +178,7 @@ def get_edge_trace(
     return edge_trace
 
 
-def get_node_trace(G: nx.Graph, node_coords: dict[int, tuple], color: str) -> go.Scatter:
+def get_node_trace(G: nx.Graph, node_coords: dict[int, tuple], colors: list[str]) -> go.Scatter:
     """Create a Plotly scatter trace of graph nodes.
 
     Args:
@@ -200,7 +198,7 @@ def get_node_trace(G: nx.Graph, node_coords: dict[int, tuple], color: str) -> go
         mode="markers",
         hoverinfo="text",
         marker=dict(
-            color=color,
+            color=[colors[random.randint(0, 1)] for _ in G.nodes()],
             size=5,
         ),
     )
@@ -218,12 +216,15 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], show_edges: bool=True) -
     Returns:
         go.Figure: A Plotly figure showing a graph with highlighted subgraph.
     """
-    node_trace = get_node_trace(G, node_coords, THEME_COLOR)
-    data = [node_trace]
+    random.seed(10)
+    data = []
 
     if show_edges:
-        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.5)
+        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.3)
         data.append(edge_trace)
+
+    node_trace = get_node_trace(G, node_coords, colors=["#17BEBB", "#FF7006"])
+    data.append(node_trace)
 
     fig = go.Figure(
         data=data,
@@ -240,22 +241,6 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], show_edges: bool=True) -
 
     return fig
 
-
-def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
-    batch = next(iter(dataset))[0]
-    reconstruction_tensor_for_plot = make_grid(batch.cpu(), nrow=num_rows)
-    fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
-
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
-    fig.update_layout(
-        margin={"t": 0, "l": 0, "b": 0, "r": 0},
-        paper_bgcolor="black",
-        plot_bgcolor="black",
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
 
 def generate_model_fig(qpu: str, n_latents: int, random_seed: int) -> go.Figure:
     """Generates a figure of the machine learning model.

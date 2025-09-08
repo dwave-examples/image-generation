@@ -19,7 +19,6 @@ from typing import Any, Optional
 
 from dash import dcc, html
 from dwave.cloud import Client
-from plotly import graph_objects as go
 
 from demo_configs import (
     DEFAULT_QPU,
@@ -29,8 +28,6 @@ from demo_configs import (
     SLIDER_LATENTS,
     THUMBNAIL,
 )
-from src.model_wrapper import get_dataset
-from src.utils.callback_helpers import display_dataset
 
 # Initialize available QPUs
 try:
@@ -42,18 +39,6 @@ try:
 
 except Exception:
     SOLVERS = ["No Leap Access"]
-
-
-def display_input_data() -> go.Figure:
-    """Load data from MNIST and display in input tab.
-
-    Returns:
-        fig: a figure of MNIST data.
-    """
-    dataset = get_dataset(32, 8 * 16)
-    fig = display_dataset(dataset, 8)
-
-    return fig
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -456,7 +441,7 @@ def create_interface():
                                 mobile_breakpoint=0,
                                 children=[
                                     dcc.Tab(
-                                        label="MNIST Training Data",
+                                        label="Machine Learning Model",
                                         id="input-tab",
                                         value="input-tab",  # used for switching tabs programatically
                                         className="tab",
@@ -464,7 +449,9 @@ def create_interface():
                                             html.Div(
                                                 [
                                                     html.Img(src="static/step_1_input.png"),
+                                                    html.Div(className="forward-arrow"),
                                                     html.Img(src="static/step_2_encode.png"),
+                                                    html.Div(className="forward-arrow"),
                                                     html.Div(
                                                         [
                                                             html.Div(
@@ -490,7 +477,7 @@ def create_interface():
                                                             html.Div([
                                                                 html.Div(
                                                                     [
-                                                                        html.Div(one, className=f"latent-{'minus' if one < 0 else 'plus'}") for one in [1,-1,1,1,1,-1,-1,1,-1,1,1,-1]
+                                                                        html.Div(one, className=f"latent-{'minus' if isinstance(one, str) or one < 0 else 'plus'}") for one in [1,-1,1,1,1,"...",-1]
                                                                     ],
                                                                     id="latent-space-graph"
                                                                 ),
@@ -506,7 +493,9 @@ def create_interface():
                                                         ],
                                                         className="latent-space-graph-wrapper",
                                                     ),
+                                                    html.Div(className="forward-arrow"),
                                                     html.Img(src="static/step_4_decode.png"),
+                                                    html.Div(className="forward-arrow"),
                                                     html.Img(src="static/step_5_output.png"),
                                                 ],
                                                 className="graph-model-wrapper"
