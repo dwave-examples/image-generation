@@ -313,9 +313,9 @@ progress::-webkit-progress-bar {
     position: absolute;
     display: flex;
     justify-content: space-between;
-    width: 106%;
+    width: 102%;
     top: calc(50% - 100px);
-    left: -3%;
+    left: 0;
 }
 
 .arrow-left,
@@ -366,17 +366,18 @@ progress::-webkit-progress-bar {
     font-size: 2rem;
     color: var(--theme-secondary);
     position: absolute;
+    background-color: black;
 }
 
 .arrow-left:before {
-    left: 1rem;
-    top: -1rem;
+    left: 0;
+    top: 2rem;
 }
 
 .arrow-right:after {
     content: "MMD";
-    right: 1rem;
-    bottom: -1rem;
+    right: 0;
+    bottom: 2rem;
 }
 
 .forward-arrow {

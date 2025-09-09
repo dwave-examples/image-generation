@@ -26,6 +26,7 @@ from demo_configs import (
     MAIN_HEADER,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
+    THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
 
@@ -454,25 +455,35 @@ def create_interface():
                                                     html.Div(className="forward-arrow"),
                                                     html.Div(
                                                         [
-                                                            html.Div(
-                                                                dcc.Graph(
-                                                                    id="fig-qpu-graph",
-                                                                    responsive=True,
-                                                                    config={
-                                                                        "displayModeBar": False,
-                                                                    },
+                                                            dcc.Loading(
+                                                                parent_className="graph",
+                                                                type="circle",
+                                                                color=THEME_COLOR_SECONDARY,
+                                                                children=html.Div(
+                                                                    dcc.Graph(
+                                                                        id="fig-qpu-graph",
+                                                                        responsive=True,
+                                                                        config={
+                                                                            "displayModeBar": False,
+                                                                        },
+                                                                    ),
+                                                                    className="graph",
                                                                 ),
-                                                                className="graph",
                                                             ),
-                                                            html.Div(
-                                                                dcc.Graph(
-                                                                    id="fig-not-qpu-graph",
-                                                                    responsive=True,
-                                                                    config={
-                                                                        "displayModeBar": False,
-                                                                    },
+                                                            dcc.Loading(
+                                                                parent_className="graph",
+                                                                type="circle",
+                                                                color=THEME_COLOR_SECONDARY,
+                                                                children=html.Div(
+                                                                    dcc.Graph(
+                                                                        id="fig-not-qpu-graph",
+                                                                        responsive=True,
+                                                                        config={
+                                                                            "displayModeBar": False,
+                                                                        },
+                                                                    ),
+                                                                    className="graph",
                                                                 ),
-                                                                className="graph",
                                                             ),
                                                             html.Div([
                                                                 html.Div(
