@@ -31,6 +31,15 @@ Autoencoder (DVAE) and a Graph Restricted Boltzmann Machine (GRBM).
 
 DEFAULT_QPU = "Advantage2_system1.6"
 
+GENERATE_NEW_MODEL_DIAGRAM = True  # If True, runs will update the model diagram in the input tab.
+
+# The index (in the MNIST dataset) of the image to use as an example in the UI
+# The first couple images in indices 0-10 are [5, 0, 4, 1, 9, 2, 1, 3, 1, 4, 3]
+# The demo may need to be restarted to see this change
+EXAMPLE_IMAGE_INDEX = 0
+
+GRAPH_COLORS = ["#FF7006", "#17BEBB"]  # First color is for -1 second is for +1
+
 #######################################
 # Sliders, buttons and option entries #
 #######################################

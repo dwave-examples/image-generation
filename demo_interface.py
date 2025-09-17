@@ -15,20 +15,24 @@
 """This file stores the Dash HTML layout for the app."""
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from dash import dcc, html
 from dwave.cloud import Client
+from plotly import graph_objects as go
 
 from demo_configs import (
     DEFAULT_QPU,
     DESCRIPTION,
+    EXAMPLE_IMAGE_INDEX,
     MAIN_HEADER,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
     THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
+from src.utils.callback_helpers import get_example_image
 
 # Initialize available QPUs
 try:
@@ -40,6 +44,25 @@ try:
 
 except Exception:
     SOLVERS = ["No Leap Access"]
+
+# Initialize the latent diagram with either the available file or random +/- 1s
+try:
+    with open("static/model_diagram/latent_notqpu.json", "r") as f:
+        latent_qpu = json.load(f)
+
+    LATENT_DIAGRAM_START = latent_qpu[:5]
+    LATENT_DIAGRAM_END = latent_qpu[-1]
+
+except Exception:
+    LATENT_DIAGRAM_START = [1, -1, -1, 1, -1]
+    LATENT_DIAGRAM_END = 1
+
+# An empty black fig to show when loading
+DEFAULT_FIG = go.Figure(
+    layout=go.Layout(paper_bgcolor="black", plot_bgcolor="black")
+)
+DEFAULT_FIG.update_xaxes(showgrid=False, zeroline=False)
+DEFAULT_FIG.update_yaxes(showgrid=False, zeroline=False)
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -368,6 +391,35 @@ def generate_problem_details_table(details: dict) -> html.Table:
     )
 
 
+def generate_latent_diagram(
+    latent_start: list[int]=LATENT_DIAGRAM_START,
+    latent_end: int=LATENT_DIAGRAM_END
+) -> list:
+    """Generate the visual +/- ones vector
+
+    Args:
+        latent_start: The first few +/- ones to show before the ``...``.
+        latent_end: The last digit of the latent vector.
+
+    Returns:
+        A list containing the visuals for the first few +/- ones and the last +/- one.
+    """
+    latent_start_html = [
+        html.Div(
+            one, className=f"latent-{'plus' if one > 0 else 'minus'}"
+        ) for one in latent_start
+    ]
+
+    return [
+        *latent_start_html,
+        html.Div("..."),
+        html.Div(
+            latent_end,
+            className=f"latent-{'plus' if latent_end > 0 else 'minus'}"
+        ),
+    ]
+
+
 def create_interface():
     """Set the application HTML."""
     return html.Div(
@@ -376,6 +428,8 @@ def create_interface():
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
             dcc.Store(id="last-trained-model"),
             dcc.Store(id="last-saved-id"),
+            dcc.Store(id="latent-mapping"),
+            dcc.Store(id="example-image", data=get_example_image(EXAMPLE_IMAGE_INDEX)),
             dcc.Interval(id="epoch-checker", interval=500, disabled=True),
             # Header brand banner
             html.Div(
@@ -449,9 +503,15 @@ def create_interface():
                                         children=[
                                             html.Div(
                                                 [
-                                                    html.Img(src="static/step_1_input.png"),
+                                                    html.Img(
+                                                        src="static/model_diagram/step_1_input.png",
+                                                        id="step-1-input-img",
+                                                    ),
                                                     html.Div(className="forward-arrow"),
-                                                    html.Img(src="static/step_2_encode.png"),
+                                                    html.Img(
+                                                        src="static/model_diagram/step_2_encode.png",
+                                                        id="step-2-encode-img",
+                                                    ),
                                                     html.Div(className="forward-arrow"),
                                                     html.Div(
                                                         [
@@ -459,6 +519,8 @@ def create_interface():
                                                                 parent_className="graph",
                                                                 type="circle",
                                                                 color=THEME_COLOR_SECONDARY,
+                                                                overlay_style={"visibility": "visible"},
+                                                                delay_show=100,
                                                                 children=html.Div(
                                                                     dcc.Graph(
                                                                         id="fig-qpu-graph",
@@ -466,6 +528,7 @@ def create_interface():
                                                                         config={
                                                                             "displayModeBar": False,
                                                                         },
+                                                                        figure=DEFAULT_FIG,
                                                                     ),
                                                                     className="graph",
                                                                 ),
@@ -474,25 +537,23 @@ def create_interface():
                                                                 parent_className="graph",
                                                                 type="circle",
                                                                 color=THEME_COLOR_SECONDARY,
+                                                                overlay_style={"visibility": "visible"},
+                                                                delay_show=100,
                                                                 children=html.Div(
                                                                     dcc.Graph(
-                                                                        id="fig-not-qpu-graph",
+                                                                        id="fig-notqpu-graph",
                                                                         responsive=True,
                                                                         config={
                                                                             "displayModeBar": False,
                                                                         },
+                                                                        figure=DEFAULT_FIG,
                                                                     ),
                                                                     className="graph",
                                                                 ),
                                                             ),
                                                             html.Div([
-                                                                html.Div(
-                                                                    [
-                                                                        html.Div(one, className=f"latent-{'minus' if isinstance(one, str) or one < 0 else 'plus'}") for one in [1,-1,1,1,1,"...",-1]
-                                                                    ],
-                                                                    id="latent-space-graph"
-                                                                ),
-                                                                html.Div([html.Div(), html.Div()],className="curly-brace"),
+                                                                html.Div(generate_latent_diagram(), id="latent-space-graph"),
+                                                                html.Div([html.Div(), html.Div()], className="curly-brace"),
                                                                 html.Div("256", id="latent-diagram-size")
 
                                                             ], className="latent-vector-diagram"),
@@ -505,9 +566,9 @@ def create_interface():
                                                         className="latent-space-graph-wrapper",
                                                     ),
                                                     html.Div(className="forward-arrow"),
-                                                    html.Img(src="static/step_4_decode.png"),
+                                                    html.Img(src="static/model_diagram/step_4_decode.png", id="step-4-decode-img"),
                                                     html.Div(className="forward-arrow"),
-                                                    html.Img(src="static/step_5_output.png"),
+                                                    html.Img(src="static/model_diagram/step_5_output.png", id="step-5-output-img"),
                                                 ],
                                                 className="graph-model-wrapper"
                                             ),

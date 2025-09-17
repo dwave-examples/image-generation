@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -62,7 +63,7 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
     return epoch < 6 and opt_step % 10 == 0
 
 
-def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = None) -> DataLoader:
+def get_dataset(image_size: int) -> DataLoader:
     transform = Compose(
         [
             Resize((image_size, image_size)),
@@ -71,13 +72,25 @@ def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = 
         ]
     )
 
-    # Load the dataset and create the dataloader
+    # Load the dataset
     dataset = MNIST(
         root="data",
         train=True,
         download=True,
         transform=transform,
     )
+
+    return dataset
+
+
+def get_dataloader(
+    image_size: int,
+    batch_size: int,
+    dataset_size: Optional[int] = None,
+) -> DataLoader:
+    # Create the dataloader
+    dataset = get_dataset(image_size)
+
     if dataset_size:
         dataset = torch.utils.data.random_split(
             dataset, [dataset_size, len(dataset) - dataset_size]
@@ -207,7 +220,7 @@ class ModelWrapper:
             dataset_size: The number of images to use for training.
                 Default (``None``) uses all available images.
         """
-        self._dataloader = get_dataset(self.IMAGE_SIZE, batch_size, dataset_size)
+        self._dataloader = get_dataloader(self.IMAGE_SIZE, batch_size, dataset_size)
 
     def train_init(
         self,
@@ -354,6 +367,9 @@ class ModelWrapper:
                 quadratic_range=self.quadratic_range,
                 sample_params=self.sampler_kwargs,
             )
+
+        with open("static/model_diagram/latent_qpu.json", "w") as f:
+            json.dump(samples[0].tolist(), f)
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
         if sharpen:

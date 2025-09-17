@@ -1,5 +1,5 @@
-dash[diskcache]~=3.0
-dwave-ocean-sdk~=8.4
+dash[diskcache]~=3.2
+dwave-ocean-sdk~=9.0
 dwave-pytorch-plugin~=0.2
 einops~=0.8
 matplotlib~=3.10
