@@ -33,7 +33,7 @@ from plotly import graph_objects as go
 from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
 from demo_interface import (
     SOLVERS,
-    generate_latent_diagram,
+    generate_latent_vector,
     generate_model_data,
     generate_options,
     generate_problem_details_table
@@ -103,7 +103,7 @@ def toggle_popup(popup_toggle: list[int]) -> str:
     Output("step-5-output-img", "src", allow_duplicate=True),
     Output("fig-qpu-graph", "figure", allow_duplicate=True),
     Output("fig-notqpu-graph", "figure", allow_duplicate=True),
-    Output("latent-space-graph", "children"),
+    Output("latent-space-vector", "children"),
     inputs=[
         Input({"type": "progress", "index": ALL}, "value"),
         State("fig-qpu-graph", "figure"),
@@ -133,7 +133,7 @@ def update_model_diagram_imgs(
         step-5-output-img: The src url for the output image.
         fig-qpu-graph: The QPU graph figure.
         fig-notqpu-graph: The not QPU graph figure.
-        latent-space-graph: The Dash HTML for the plus and minus ones visual vector.
+        latent-space-vector: The Dash HTML for the plus and minus ones visual vector.
     """
     fig_qpu = go.Figure(fig_qpu)
     fig_notqpu = go.Figure(fig_notqpu)
@@ -157,7 +157,7 @@ def update_model_diagram_imgs(
             f"static/model_diagram/step_5_output.png?interval={progress}",
             fig_qpu,
             fig_notqpu,
-            generate_latent_diagram(latent_notqpu[:5], latent_notqpu[-1]),
+            generate_latent_vector(latent_notqpu[:5], latent_notqpu[-1]),
         )
 
     raise PreventUpdate

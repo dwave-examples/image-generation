@@ -20,6 +20,10 @@ The following style rules can be altered or removed and any additional
 custom CSS can be added below.
 *******************************************************************/
 
+body {
+    overflow: hidden;
+}
+
 .tab-content-results {
     padding: 3rem 3rem 0;
     display: flex;
@@ -179,7 +183,7 @@ progress::-webkit-progress-bar {
 }
 
 .graph-model-wrapper > .latent-space-graph-wrapper {
-    width: 30%;
+    width: 36%;
     height: 100%;
 }
 
@@ -192,16 +196,23 @@ progress::-webkit-progress-bar {
     padding: 0 2rem;
 }
 
-.graph-model-wrapper img {
+.graph-model-wrapper .graph-model-itermediate-step {
     width: 12%;
+}
+
+.graph-model-wrapper .graph-model-itermediate-step img {
+    width: 100%;
     height: auto;
     image-rendering: pixelated;
     object-fit: contain;
 }
 
-.graph-model-wrapper img:first-child,
-.graph-model-wrapper img:last-child {
+.graph-model-wrapper > img:first-child,
+.graph-model-wrapper > img:last-child {
     width: 8%;
+    height: auto;
+    image-rendering: pixelated;
+    object-fit: contain;
 }
 
 .latent-space-graph-wrapper {
@@ -211,7 +222,8 @@ progress::-webkit-progress-bar {
     position: relative;
 }
 
-#latent-space-graph {
+#latent-space-vector {
+    margin: auto;
     font-size: 2rem;
     border-left: 3px solid var(--theme);
     border-right: 3px solid var(--theme);
@@ -224,20 +236,20 @@ progress::-webkit-progress-bar {
     justify-content: space-between;
 }
 
-#latent-space-graph .latent-plus {
+#latent-space-vector .latent-plus {
     color: var(--teal-darker);
 }
 
-#latent-space-graph .latent-plus:before {
+#latent-space-vector .latent-plus:before {
     content: "+";
 }
 
-#latent-space-graph .latent-minus {
+#latent-space-vector .latent-minus {
     color: var(--orange);
 }
 
-#latent-space-graph:before,
-#latent-space-graph:after {
+#latent-space-vector:before,
+#latent-space-vector:after {
     content: " ";
     position: absolute;
     left: 0;
@@ -246,7 +258,7 @@ progress::-webkit-progress-bar {
     background: linear-gradient(to right, var(--theme) 3%, transparent 3%, transparent 97%, var(--theme) 97%);
 }
 
-#latent-space-graph:after {
+#latent-space-vector:after {
     bottom: 0;
 }
 
@@ -285,22 +297,20 @@ progress::-webkit-progress-bar {
     border-bottom: 3px solid var(--theme);
     border-bottom-left-radius: 2rem;
     left: -2rem;
-    top: -2.3rem;
+    top: -2rem;
 }
 
 .curly-brace > div:last-child:after {  
     border-bottom: 3px solid var(--theme);
     border-bottom-right-radius: 2rem;
-    top: -2.3rem;
+    top: -2rem;
     right: -2rem;
 }
 
 .latent-vector-diagram {
-    position: absolute;
-    top: calc(50% - 4.6rem);
-    left: calc(50% - var(--latent-vector-width)/2);
     text-align: center;
     color: var(--theme);
+    height: 100%;
 }
 
 #latent-diagram-size {
@@ -315,8 +325,9 @@ progress::-webkit-progress-bar {
     display: flex;
     justify-content: space-between;
     width: 102%;
-    top: calc(50% - 100px);
+    top: calc(30% - 100px);
     left: 0;
+    pointer-events: none;
 }
 
 .arrow-left,
@@ -381,15 +392,17 @@ progress::-webkit-progress-bar {
     bottom: 2rem;
 }
 
-.forward-arrow {
-    height: 0.5rem;
-    width: 4%;
-    background-color: var(--theme);
+.graph-model-itermediate-step {
     position: relative;
+}
 
-    /* animation: slidebg 8s linear infinite; */
-    /* background-image: linear-gradient(to left, white 50%, var(--theme-secondary) 50%); */
-    /* background-size: 300%; */
+.forward-arrow {
+    height: var(--forward-arrow-height);
+    width: 180%;
+    left: -60%;
+    top: calc(50% - var(--forward-arrow-height)/2);
+    background: linear-gradient(to right, transparent 0%, var(--theme) 80%);
+    position: absolute;
 }
 
 .forward-arrow:hover {
@@ -399,13 +412,25 @@ progress::-webkit-progress-bar {
 .forward-arrow:after {
     content: "";
     position: absolute;
-    border-right: 4px solid var(--theme);
-    border-top: 4px solid var(--theme);
-    height: 1.6rem;
-    width: 1.6rem;
-    transform: rotate(45deg);
-    top: -0.7rem;
-    right: 0;
+    border: calc(var(--forward-arrow-height)/2) solid transparent;
+    border-left-color: var(--theme);
+    top: 0;
+    right: calc(-1*var(--forward-arrow-height));
+}
+
+.forward-arrow:before {
+    content: "ENCODING";
+    color: white;
+    font-weight: bolder;
+    letter-spacing: 2px;
+    font-style: italic;
+    display: block;
+    text-align: right;
+    line-height: var(--forward-arrow-height);
+}
+
+.graph-model-itermediate-step:last-of-type .forward-arrow:before {
+    content: "DECODING";
 }
 
 .graph[style="visibility: visible;"] {
@@ -414,8 +439,13 @@ progress::-webkit-progress-bar {
     transition: filter 0.1s linear, opacity 0.1s linear;
 }
 
-@keyframes slidebg {
-  to {
-    background-position: -20vw;
-  }
+.tooltip {
+    --bs-tooltip-arrow-height: 1.5rem;
+    --bs-tooltip-arrow-width: 1.5rem;
+    --bs-tooltip-bg: white;
+    --bs-tooltip-color: var(--grey-dark);
+    --bs-tooltip-font-size: 1.4rem;
+    --bs-tooltip-padding-x: 1rem;
+    --bs-tooltip-padding-y: 1rem;
+    --bs-tooltip-max-width: 30rem;
 }

@@ -22,6 +22,7 @@ from dash import DiskcacheManager
 
 from demo_configs import APP_TITLE, THEME_COLOR, THEME_COLOR_SECONDARY
 from demo_interface import create_interface
+import dash_bootstrap_components as dbc
 
 # Essential for initializing callbacks. Do not remove.
 import demo_callbacks
@@ -46,6 +47,7 @@ app = dash.Dash(
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
     prevent_initial_callbacks="initial_duplicate",
     background_callback_manager=background_callback_manager,
+    external_stylesheets=[dbc.themes.BOOTSTRAP]
 )
 app.title = APP_TITLE
 

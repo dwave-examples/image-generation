@@ -21,6 +21,7 @@ from typing import Any, Optional
 from dash import dcc, html
 from dwave.cloud import Client
 from plotly import graph_objects as go
+import dash_bootstrap_components as dbc
 
 from demo_configs import (
     DEFAULT_QPU,
@@ -391,7 +392,7 @@ def generate_problem_details_table(details: dict) -> html.Table:
     )
 
 
-def generate_latent_diagram(
+def generate_latent_vector(
     latent_start: list[int]=LATENT_DIAGRAM_START,
     latent_end: int=LATENT_DIAGRAM_END
 ) -> list:
@@ -418,6 +419,65 @@ def generate_latent_diagram(
             className=f"latent-{'plus' if latent_end > 0 else 'minus'}"
         ),
     ]
+
+
+def generate_graph(type: str) -> list:
+    """Generate graph with loading.
+
+    Args:
+        type: Type of graph being displayed.
+
+    Returns:
+        A list the graph wrapped in dcc.Loading.
+    """
+
+    return dcc.Loading(
+        parent_className="graph",
+        type="circle",
+        color=THEME_COLOR_SECONDARY,
+        overlay_style={"visibility": "visible"},
+        delay_show=100,
+        children=[
+            html.Div(
+                dcc.Graph(
+                    id=f"fig-{type}-graph",
+                    responsive=True,
+                    config={
+                        "displayModeBar": False,
+                    },
+                    figure=DEFAULT_FIG,
+                ),
+                className="graph",
+                id=f"{type}-graph-wrapper",
+            ),
+        ]
+    )
+
+
+def generate_tooltip(title: str, description: str, target: str) -> list:
+    """Generate tooltip.
+
+    Args:
+        title: The title for the tooltip.
+        description: The description for the tooltip.
+        target: What id opens the tooltip.
+
+    Returns:
+        A tooltip.
+    """
+
+    return dbc.Tooltip(
+        children=html.Div(
+            [
+                html.H5(title),
+                html.P(description),
+            ],
+            className="dbc-tooltip-content"
+        ),
+        className="dbc-tooltip",
+        target=target,
+        delay={"show": 0, "hide": 100},
+    )
 
 
 def create_interface():
@@ -507,70 +567,74 @@ def create_interface():
                                                         src="static/model_diagram/step_1_input.png",
                                                         id="step-1-input-img",
                                                     ),
-                                                    html.Div(className="forward-arrow"),
-                                                    html.Img(
-                                                        src="static/model_diagram/step_2_encode.png",
-                                                        id="step-2-encode-img",
-                                                    ),
-                                                    html.Div(className="forward-arrow"),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(
+                                                            src="static/model_diagram/step_2_encode.png",
+                                                            id="step-2-encode-img",
+                                                        ),
+                                                    ], className="graph-model-itermediate-step"),
                                                     html.Div(
                                                         [
-                                                            dcc.Loading(
-                                                                parent_className="graph",
-                                                                type="circle",
-                                                                color=THEME_COLOR_SECONDARY,
-                                                                overlay_style={"visibility": "visible"},
-                                                                delay_show=100,
-                                                                children=html.Div(
-                                                                    dcc.Graph(
-                                                                        id="fig-qpu-graph",
-                                                                        responsive=True,
-                                                                        config={
-                                                                            "displayModeBar": False,
-                                                                        },
-                                                                        figure=DEFAULT_FIG,
-                                                                    ),
-                                                                    className="graph",
-                                                                ),
-                                                            ),
-                                                            dcc.Loading(
-                                                                parent_className="graph",
-                                                                type="circle",
-                                                                color=THEME_COLOR_SECONDARY,
-                                                                overlay_style={"visibility": "visible"},
-                                                                delay_show=100,
-                                                                children=html.Div(
-                                                                    dcc.Graph(
-                                                                        id="fig-notqpu-graph",
-                                                                        responsive=True,
-                                                                        config={
-                                                                            "displayModeBar": False,
-                                                                        },
-                                                                        figure=DEFAULT_FIG,
-                                                                    ),
-                                                                    className="graph",
-                                                                ),
-                                                            ),
-                                                            html.Div([
-                                                                html.Div(generate_latent_diagram(), id="latent-space-graph"),
-                                                                html.Div([html.Div(), html.Div()], className="curly-brace"),
-                                                                html.Div("256", id="latent-diagram-size")
-
-                                                            ], className="latent-vector-diagram"),
+                                                            generate_graph("qpu"),
+                                                            generate_graph("notqpu"),
+                                                            
                                                             html.Div([
                                                                 html.Div(className="arrow-left"),
                                                                 html.Div(className="arrow-right")
 
                                                             ], className="latent-loss-arrows"),
+                                                            html.Div([
+                                                                html.Div(generate_latent_vector(), id="latent-space-vector"),
+                                                                html.Div([html.Div(), html.Div()], className="curly-brace"),
+                                                                html.Div("256", id="latent-diagram-size")
+
+                                                            ], className="latent-vector-diagram", id="latent-vector-diagram"),
                                                         ],
                                                         className="latent-space-graph-wrapper",
                                                     ),
-                                                    html.Div(className="forward-arrow"),
-                                                    html.Img(src="static/model_diagram/step_4_decode.png", id="step-4-decode-img"),
-                                                    html.Div(className="forward-arrow"),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(src="static/model_diagram/step_4_decode.png", id="step-4-decode-img"),
+                                                    ], className="graph-model-itermediate-step"),
                                                     html.Img(src="static/model_diagram/step_5_output.png", id="step-5-output-img"),
                                                 ],
                                                 className="graph-model-wrapper"
+                                            ),
+                                            generate_tooltip(
+                                                "Input Image",
+                                                "An input image from the MNIST dataset.",
+                                                "step-1-input-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Encoding Step",
+                                                "Each collection of 4 pixels represents a feature of the input image.",
+                                                "step-2-encode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Quantum Computer Sample",
+                                                "The quantum computer is sampled to obtain a new list of +/- 1s. These +/- 1s can be decoded to create a new never before seen image.",
+                                                "qpu-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Mapping of Latent +/- 1s onto the Quantum Computer",
+                                                "Each +/- 1 of the latent representation is mapped to a qubit on the quantum computer. This allows for a comparison between the quantum computer and the latent representation.",
+                                                "notqpu-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Latent Representation",
+                                                "The encoded latent representation of the image. The number of +/- 1s is determined by the size of the latent space that was selected during training.",
+                                                "latent-vector-diagram",
+                                            ),
+                                            generate_tooltip(
+                                                "Decoding Step",
+                                                "Each collection of 4 pixels represents a feature of the output image.",
+                                                "step-4-decode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Output Image",
+                                                "The image decoded from the latent +/- 1s. The quality of the image can be impacted by the number of epochs, the size of the latent space, the batch size, and the QPU used.",
+                                                "step-5-output-img",
                                             ),
                                         ],
                                     ),

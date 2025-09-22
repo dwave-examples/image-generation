@@ -306,7 +306,7 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int],
         layout=go.Layout(
             showlegend=False,
             hovermode="closest",
-            margin=dict(b=20, l=0, r=0, t=40),
+            margin=dict(b=0, l=0, r=0, t=0),
             paper_bgcolor="rgba(0, 0, 0, 0)",
             plot_bgcolor="rgba(0, 0, 0, 0)",
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
