@@ -607,7 +607,7 @@ def create_interface():
                                                 "step-1-input-img",
                                             ),
                                             generate_tooltip(
-                                                "Encoding Step",
+                                                "Encoding",
                                                 "Each collection of 4 pixels represents a feature of the input image.",
                                                 "step-2-encode-img",
                                             ),
@@ -627,7 +627,7 @@ def create_interface():
                                                 "latent-vector-diagram",
                                             ),
                                             generate_tooltip(
-                                                "Decoding Step",
+                                                "Decoding",
                                                 "Each collection of 4 pixels represents a feature of the output image.",
                                                 "step-4-decode-img",
                                             ),

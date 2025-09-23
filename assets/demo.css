@@ -225,8 +225,8 @@ progress::-webkit-progress-bar {
 #latent-space-vector {
     margin: auto;
     font-size: 2rem;
-    border-left: 3px solid var(--theme);
-    border-right: 3px solid var(--theme);
+    border-left: 3px solid var(--theme-secondary);
+    border-right: 3px solid var(--theme-secondary);
     font-weight: 800;
     position: relative;
     padding: 0 0.5rem;
@@ -237,7 +237,7 @@ progress::-webkit-progress-bar {
 }
 
 #latent-space-vector .latent-plus {
-    color: var(--teal-darker);
+    color: var(--teal-dark);
 }
 
 #latent-space-vector .latent-plus:before {
@@ -255,7 +255,7 @@ progress::-webkit-progress-bar {
     left: 0;
     height: 3px;
     width: 100%;
-    background: linear-gradient(to right, var(--theme) 3%, transparent 3%, transparent 97%, var(--theme) 97%);
+    background: linear-gradient(to right, var(--theme-secondary) 3%, transparent 3%, transparent 97%, var(--theme-secondary) 97%);
 }
 
 #latent-space-vector:after {
@@ -270,7 +270,7 @@ progress::-webkit-progress-bar {
 }
 
 .curly-brace > div {
-  border-top: 3px solid var(--theme);
+  border-top: 3px solid var(--theme-secondary);
   width: calc(var(--latent-vector-width)/2 - 2rem);
   height: 2rem;
   position: relative;
@@ -294,14 +294,14 @@ progress::-webkit-progress-bar {
 }
 
 .curly-brace > div:first-child:before {  
-    border-bottom: 3px solid var(--theme);
+    border-bottom: 3px solid var(--theme-secondary);
     border-bottom-left-radius: 2rem;
     left: -2rem;
     top: -2rem;
 }
 
 .curly-brace > div:last-child:after {  
-    border-bottom: 3px solid var(--theme);
+    border-bottom: 3px solid var(--theme-secondary);
     border-bottom-right-radius: 2rem;
     top: -2rem;
     right: -2rem;
@@ -309,12 +309,12 @@ progress::-webkit-progress-bar {
 
 .latent-vector-diagram {
     text-align: center;
-    color: var(--theme);
+    color: var(--theme-secondary);
     height: 100%;
 }
 
 #latent-diagram-size {
-    color: var(--theme-secondary);
+    color: var(--blue-lighter);
     font-weight: 800;
     font-size: 2rem;
     margin-top: -1rem;
@@ -333,7 +333,7 @@ progress::-webkit-progress-bar {
 .arrow-left,
 .arrow-right {
     border: 4px solid;
-    border-color: transparent transparent transparent var(--theme);
+    border-color: transparent transparent transparent var(--theme-secondary);
     border-radius: 50%;
     height: 18rem;
     width: 10rem;
@@ -349,26 +349,26 @@ progress::-webkit-progress-bar {
 }
 
 .arrow-right {
-    border-color: transparent var(--theme) transparent transparent;
+    border-color: transparent var(--theme-secondary) transparent transparent;
     right: 0;
 }
 
 .arrow-left:after {
-    border-right: 4px solid var(--theme);
-    border-bottom: 4px solid var(--theme);
+    border-right: 4px solid var(--theme-secondary);
+    border-bottom: 4px solid var(--theme-secondary);
     bottom: 2rem;
-    left: 0.3rem;
+    left: 0.4rem;
 }
 
 .arrow-right:before {
     content: "";
     position: absolute;
-    border-left: 4px solid var(--theme);
-    border-top: 4px solid var(--theme);
+    border-left: 4px solid var(--theme-secondary);
+    border-top: 4px solid var(--theme-secondary);
     height: 2rem;
     width: 2rem;
     top: 2rem;
-    right: 0.3rem;
+    right: 0.4rem;
 }
 
 .arrow-left:before,
@@ -376,7 +376,7 @@ progress::-webkit-progress-bar {
     content: "NLL";
     font-weight: 600;
     font-size: 2rem;
-    color: var(--theme-secondary);
+    color: var(--blue-lighter);
     position: absolute;
     background-color: black;
 }
@@ -401,7 +401,7 @@ progress::-webkit-progress-bar {
     width: 180%;
     left: -60%;
     top: calc(50% - var(--forward-arrow-height)/2);
-    background: linear-gradient(to right, transparent 0%, var(--theme) 80%);
+    background: linear-gradient(to right, transparent 0%, var(--theme-secondary) 56%);
     position: absolute;
 }
 
@@ -413,14 +413,16 @@ progress::-webkit-progress-bar {
     content: "";
     position: absolute;
     border: calc(var(--forward-arrow-height)/2) solid transparent;
-    border-left-color: var(--theme);
+    border-left-color: var(--theme-secondary);
     top: 0;
     right: calc(-1*var(--forward-arrow-height));
 }
 
 .forward-arrow:before {
     content: "ENCODING";
-    color: white;
+    color: black;
+    opacity: 0.45;
+    font-size: 1.8rem;
     font-weight: bolder;
     letter-spacing: 2px;
     font-style: italic;

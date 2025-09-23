@@ -43,4 +43,5 @@ Dash reads all css files contained in `/assets/` so no imports are necessary.
     --problem-details-height: 8rem;
     --latent-vector-width: 23rem;
     --forward-arrow-height: 6rem;
+    --blue-lighter: #79adec;  /* lighter varient of --blue-light */
 }
