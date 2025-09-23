@@ -295,7 +295,7 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int],
     data = []
 
     if show_edges:
-        edge_trace = get_edge_trace(G, node_coords, "#5e9ce8", 0.3)
+        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.3)
         data.append(edge_trace)
 
     node_trace = get_node_trace(G, node_coords, mapping, file_name)

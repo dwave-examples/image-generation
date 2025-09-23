@@ -578,11 +578,11 @@ def create_interface():
                                                         [
                                                             generate_graph("qpu"),
                                                             generate_graph("notqpu"),
-                                                            
                                                             html.Div([
-                                                                html.Div(className="arrow-left"),
-                                                                html.Div(className="arrow-right")
-
+                                                                html.Div(id="arrow-left-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(id="arrow-right-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(className="arrow-left", id="arrow-left"),
+                                                                html.Div(className="arrow-right", id="arrow-right"),
                                                             ], className="latent-loss-arrows"),
                                                             html.Div([
                                                                 html.Div(generate_latent_vector(), id="latent-space-vector"),
@@ -620,6 +620,16 @@ def create_interface():
                                                 "Mapping of Latent +/- 1s onto the Quantum Computer",
                                                 "Each +/- 1 of the latent representation is mapped to a qubit on the quantum computer. This allows for a comparison between the quantum computer and the latent representation.",
                                                 "notqpu-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Negative Log-Likelihood (NLL)",
+                                                "NLL is a function that trains the quantum computer by comparing the quantum computer samples to the encoded image. This helps the quantum computer generate new +/- 1s that more accurately describe the encoded image.",
+                                                "arrow-left-pointer-events",
+                                            ),
+                                            generate_tooltip(
+                                                "Max Mean Discrepancy (MMD)",
+                                                "MMD is a function that trains the encoder to encode data into +/- 1s that more closely match the quantum computer's +/- 1s. NLL and MMD alternate to make the output of the quantum computer and the encoder as similar as possible.",
+                                                "arrow-right-pointer-events",
                                             ),
                                             generate_tooltip(
                                                 "Latent Representation",

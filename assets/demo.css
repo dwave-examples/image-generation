@@ -330,6 +330,23 @@ progress::-webkit-progress-bar {
     pointer-events: none;
 }
 
+#arrow-left-pointer-events,
+#arrow-right-pointer-events {
+    pointer-events: auto;
+    height: 100%;
+    width: 6rem;
+    position: absolute;
+    top: 0;
+}
+
+#arrow-left-pointer-events {
+    left: -2rem;
+}
+
+#arrow-right-pointer-events {
+    right: -2rem;
+}
+
 .arrow-left,
 .arrow-right {
     border: 4px solid;
