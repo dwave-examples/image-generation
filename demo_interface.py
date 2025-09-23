@@ -48,7 +48,7 @@ except Exception:
 
 # Initialize the latent diagram with either the available file or random +/- 1s
 try:
-    with open("static/model_diagram/latent_notqpu.json", "r") as f:
+    with open("static/model_diagram/latent_encoded.json", "r") as f:
         latent_qpu = json.load(f)
 
     LATENT_DIAGRAM_START = latent_qpu[:5]
@@ -577,7 +577,7 @@ def create_interface():
                                                     html.Div(
                                                         [
                                                             generate_graph("qpu"),
-                                                            generate_graph("notqpu"),
+                                                            generate_graph("encoded"),
                                                             html.Div([
                                                                 html.Div(id="arrow-left-pointer-events"),  # Only here to act as the pointer event for the hover
                                                                 html.Div(id="arrow-right-pointer-events"),  # Only here to act as the pointer event for the hover
@@ -597,7 +597,7 @@ def create_interface():
                                                         html.Div(className="forward-arrow"),
                                                         html.Img(src="static/model_diagram/step_4_decode.png", id="step-4-decode-img"),
                                                     ], className="graph-model-itermediate-step"),
-                                                    html.Img(src="static/model_diagram/step_5_output.png", id="step-5-output-img"),
+                                                    html.Img(src="static/model_diagram/step_5_output_default.png", id="step-5-output-img"),
                                                 ],
                                                 className="graph-model-wrapper"
                                             ),
@@ -619,11 +619,11 @@ def create_interface():
                                             generate_tooltip(
                                                 "Mapping of Latent +/- 1s onto the Quantum Computer",
                                                 "Each +/- 1 of the latent representation is mapped to a qubit on the quantum computer. This allows for a comparison between the quantum computer and the latent representation.",
-                                                "notqpu-graph-wrapper",
+                                                "encoded-graph-wrapper",
                                             ),
                                             generate_tooltip(
                                                 "Negative Log-Likelihood (NLL)",
-                                                "NLL is a function that trains the quantum computer by comparing the quantum computer samples to the encoded image. This helps the quantum computer generate new +/- 1s that more accurately describe the encoded image.",
+                                                "NLL is a function that trains the quantum computer by comparing the quantum computer samples to the encoded images. This helps the quantum computer generate new +/- 1s that more accurately describe the encoded image.",
                                                 "arrow-left-pointer-events",
                                             ),
                                             generate_tooltip(

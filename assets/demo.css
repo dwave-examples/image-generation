@@ -192,7 +192,8 @@ progress::-webkit-progress-bar {
     justify-content: space-between;
     align-items: center;
     background-color: black;
-    height: 100%;
+    height: calc(100vh - var(--banner-height) - 8.8rem);
+    overflow: hidden;
     padding: 0 2rem;
 }
 
@@ -420,6 +421,7 @@ progress::-webkit-progress-bar {
     top: calc(50% - var(--forward-arrow-height)/2);
     background: linear-gradient(to right, transparent 0%, var(--theme-secondary) 56%);
     position: absolute;
+    pointer-events: none;
 }
 
 .forward-arrow:hover {

@@ -102,12 +102,12 @@ def toggle_popup(popup_toggle: list[int]) -> str:
     Output("step-4-decode-img", "src", allow_duplicate=True),
     Output("step-5-output-img", "src", allow_duplicate=True),
     Output("fig-qpu-graph", "figure", allow_duplicate=True),
-    Output("fig-notqpu-graph", "figure", allow_duplicate=True),
+    Output("fig-encoded-graph", "figure", allow_duplicate=True),
     Output("latent-space-vector", "children"),
     inputs=[
         Input({"type": "progress", "index": ALL}, "value"),
         State("fig-qpu-graph", "figure"),
-        State("fig-notqpu-graph", "figure"),
+        State("fig-encoded-graph", "figure"),
         State("latent-mapping", "data"),
     ],
     prevent_initial_call=True,
@@ -115,7 +115,7 @@ def toggle_popup(popup_toggle: list[int]) -> str:
 def update_model_diagram_imgs(
     progress: int,
     fig_qpu: go.Figure,
-    fig_notqpu: go.Figure,
+    fig_encoded: go.Figure,
     latent_mapping: list
 ) -> tuple[str, str, str, str, go.Figure, go.Figure, list]:
     """Force refresh images to get around Dash caching. Updates image src with a incrementing
@@ -124,7 +124,7 @@ def update_model_diagram_imgs(
     Args:
         progress: The train or tune progress status.
         fig_qpu: The QPU graph figure.
-        fig_notqpu: The not QPU graph figure.
+        fig_encoded: The not QPU graph figure.
         latent_mapping: The mapping of the nodes to latent space indices.
 
     Returns:
@@ -132,23 +132,23 @@ def update_model_diagram_imgs(
         step-4-decode-img: The src url for the decode image.
         step-5-output-img: The src url for the output image.
         fig-qpu-graph: The QPU graph figure.
-        fig-notqpu-graph: The not QPU graph figure.
+        fig-encoded-graph: The not QPU graph figure.
         latent-space-vector: The Dash HTML for the plus and minus ones visual vector.
     """
     fig_qpu = go.Figure(fig_qpu)
-    fig_notqpu = go.Figure(fig_notqpu)
+    fig_encoded = go.Figure(fig_encoded)
 
     with open("static/model_diagram/latent_qpu.json", "r") as f:
         latent_qpu = json.load(f)
 
-    with open("static/model_diagram/latent_notqpu.json", "r") as f:
-        latent_notqpu = json.load(f)
+    with open("static/model_diagram/latent_encoded.json", "r") as f:
+        latent_encoded = json.load(f)
 
     color_mapping_qpu = [GRAPH_COLORS[int(latent_qpu[i] > 0)] for i in latent_mapping]
-    color_mapping_notqpu = [GRAPH_COLORS[int(latent_notqpu[i] > 0)] for i in latent_mapping]
+    color_mapping_encoded = [GRAPH_COLORS[int(latent_encoded[i] > 0)] for i in latent_mapping]
 
     fig_qpu.update_traces(marker=dict(color=color_mapping_qpu))
-    fig_notqpu.update_traces(marker=dict(color=color_mapping_notqpu))
+    fig_encoded.update_traces(marker=dict(color=color_mapping_encoded))
 
     if GENERATE_NEW_MODEL_DIAGRAM:
         return (
@@ -156,8 +156,8 @@ def update_model_diagram_imgs(
             f"static/model_diagram/step_4_decode.png?interval={progress}",
             f"static/model_diagram/step_5_output.png?interval={progress}",
             fig_qpu,
-            fig_notqpu,
-            generate_latent_vector(latent_notqpu[:5], latent_notqpu[-1]),
+            fig_encoded,
+            generate_latent_vector(latent_encoded[:5], latent_encoded[-1]),
         )
 
     raise PreventUpdate
@@ -168,7 +168,7 @@ def update_model_diagram_imgs(
     Output("generate-button", "disabled"),
     Output("model-details", "children"),
     Output("fig-qpu-graph", "figure"),
-    Output("fig-notqpu-graph", "figure"),
+    Output("fig-encoded-graph", "figure"),
     Output("latent-diagram-size", "children"),
     Output("latent-mapping", "data"),
     Output("step-2-encode-img", "src"),
@@ -178,6 +178,7 @@ def update_model_diagram_imgs(
         Input("model-file-name", "value"),
         Input("qpu-setting", "value"),
         Input("n-latents", "value"),
+        Input("setting-tabs", "value"),
         State("example-image", "data"),
     ]
 )
@@ -185,6 +186,7 @@ def check_qpu_and_update_model(
     model_file_name: str,
     qpu: str,
     n_latents: int,
+    setting_tabs_value: str,
     example_image: list,
 ) -> tuple[str, bool, dict, go.Figure, go.Figure, int, list[int]]:
     """Checks whether user has access to QPU associated with model and updates the model details
@@ -194,6 +196,7 @@ def check_qpu_and_update_model(
         model: The currently selected model.
         qpu: The selected QPU.
         n_latents: The dimension of the latent space.
+        setting_tabs_value: The currently selected settings tab.
         example_image: The example image to show all the steps for in the UI.
 
     Returns:
@@ -201,7 +204,7 @@ def check_qpu_and_update_model(
         generate-button-disabled: Whether to disable or enable the Generate button.
         model-details-children: The model details to display.
         fig-qpu-graph: The QPU graph figure.
-        fig-notqpu-graph: The not QPU graph figure.
+        fig-encoded-graph: The not QPU graph figure.
         latent-diagram-size: The dimension of the latent space.
         latent-mapping: The mapping of the nodes to latent space indices.
         step-2-encode-img: The src url for the encode image.
@@ -211,7 +214,7 @@ def check_qpu_and_update_model(
     model_data = None
     model_details = None
 
-    if not ctx.triggered_id or ctx.triggered_id == "model-file-name":
+    if not ctx.triggered_id or ctx.triggered_id == "model-file-name" or (ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"):
         with open(MODEL_PATH / model_file_name / "parameters.json") as file:
             model_data = json.load(file)
 
@@ -235,8 +238,8 @@ def check_qpu_and_update_model(
                 f"static/model_diagram/step_5_output.png?force_refresh={force_refresh}",
             )
 
-    fig_qpu, fig_notqpu, latent_mapping = generate_model_fig(
-        qpu,
+    fig_qpu, fig_encoded, latent_mapping = generate_model_fig(
+        model_data["qpu"] if model_data else qpu,
         model_data["n_latents"] if model_data else n_latents,
         model_data["random_seed"] if model_data else 4,
     )
@@ -246,7 +249,7 @@ def check_qpu_and_update_model(
         False,
         model_details if model_details else dash.no_update,
         fig_qpu,
-        fig_notqpu,
+        fig_encoded,
         n_latents,
         latent_mapping,
         dash.no_update,

@@ -110,7 +110,7 @@ def generate_model_diagram(model: DiscreteVariationalAutoencoder, example_image:
 
     latents = model._dvae.encoder(example_image)
     discretes = model._dvae.latent_to_discrete(latents, 1)
-    with open("static/model_diagram/latent_notqpu.json", "w") as f:
+    with open("static/model_diagram/latent_encoded.json", "w") as f:
         json.dump(discretes[0, 0].tolist(), f)
 
     step_4 = model._dvae.decoder.merge_batch_dim_and_replica_dim(
@@ -265,7 +265,12 @@ def get_node_trace(
 
     except Exception:  # Expected when QPU or latents setting is updated
         print("Accurate latent color mapping not available for the requested graph nodes.")
-        color_mapping = [GRAPH_COLORS[random.randint(0, 1)] for _ in G.nodes()]
+        rand_nodes = [random.randint(0, 1) for _ in G.nodes()]
+        color_mapping = [GRAPH_COLORS[node] for node in rand_nodes]
+        rand_latent = [1 if node else -1 for node in rand_nodes]
+        print(rand_latent)
+        with open(file_name, "w") as f:
+            json.dump(rand_latent, f)
 
     node_trace = go.Scatter(
         x=node_x,
@@ -353,6 +358,6 @@ def generate_model_fig(
         raise ValueError(f"Unknown QPU topology: {qpu_topology}")
 
     fig_qpu = get_fig(subgraph, node_coords, latent_mapping, "static/model_diagram/latent_qpu.json")
-    fig_not_qpu = get_fig(subgraph, node_coords, latent_mapping, "static/model_diagram/latent_notqpu.json", False)
+    fig_not_qpu = get_fig(subgraph, node_coords, latent_mapping, "static/model_diagram/latent_encoded.json", False)
 
     return fig_qpu, fig_not_qpu, latent_mapping
