@@ -20,6 +20,10 @@ The following style rules can be altered or removed and any additional
 custom CSS can be added below.
 *******************************************************************/
 
+body {
+    overflow: hidden;
+}
+
 .tab-content-results {
     padding: 3rem 3rem 0;
     display: flex;
@@ -51,7 +55,7 @@ div.left-column .left-column-layer-2 {
 }
 
 .header-wrapper {
-    padding: 3rem 2rem;
+    padding: 3rem 2rem 2rem;
 }
 
 div.left-column .tab-content {
@@ -63,7 +67,7 @@ div.left-column .tab-content {
 }
 
 div.left-column .tab {
-    padding: 1rem;
+    padding: 0.6rem;
     border: 1px solid #d6d6d6;
 }
 
@@ -176,4 +180,294 @@ progress::-webkit-progress-bar {
 
 .file-name-wrapper {
     align-items: center;
+}
+
+.graph-model-wrapper > .latent-space-graph-wrapper {
+    width: 36%;
+    height: 100%;
+}
+
+.graph-model-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: black;
+    height: calc(100vh - var(--banner-height) - 8.8rem);
+    overflow: hidden;
+    padding: 0 2rem;
+}
+
+.graph-model-wrapper .graph-model-itermediate-step {
+    width: 12%;
+}
+
+.graph-model-wrapper .graph-model-itermediate-step img {
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    object-fit: contain;
+}
+
+.graph-model-wrapper > img:first-child,
+.graph-model-wrapper > img:last-child {
+    width: 8%;
+    height: auto;
+    image-rendering: pixelated;
+    object-fit: contain;
+}
+
+.latent-space-graph-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+}
+
+#latent-space-vector {
+    margin: auto;
+    font-size: 2rem;
+    border-left: 3px solid var(--theme-secondary);
+    border-right: 3px solid var(--theme-secondary);
+    font-weight: 800;
+    position: relative;
+    padding: 0 0.5rem;
+    text-align: center;
+    display: flex;
+    width: var(--latent-vector-width);
+    justify-content: space-between;
+}
+
+#latent-space-vector .latent-plus {
+    color: var(--teal-dark);
+}
+
+#latent-space-vector .latent-plus:before {
+    content: "+";
+}
+
+#latent-space-vector .latent-minus {
+    color: var(--orange);
+}
+
+#latent-space-vector:before,
+#latent-space-vector:after {
+    content: " ";
+    position: absolute;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: linear-gradient(to right, var(--theme-secondary) 3%, transparent 3%, transparent 97%, var(--theme-secondary) 97%);
+}
+
+#latent-space-vector:after {
+    bottom: 0;
+}
+
+.curly-brace {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.curly-brace > div {
+  border-top: 3px solid var(--theme-secondary);
+  width: calc(var(--latent-vector-width)/2 - 2rem);
+  height: 2rem;
+  position: relative;
+}
+
+.curly-brace > div:first-child {
+  border-top-right-radius: 2rem;
+}
+
+.curly-brace > div:last-child {
+  border-top-left-radius: 2rem;
+}
+
+.curly-brace > div:last-child:after,
+.curly-brace > div:first-child:before {
+  content: "";
+  width: 2rem;
+  height: 2rem;
+  position: absolute;
+  display: block;
+}
+
+.curly-brace > div:first-child:before {  
+    border-bottom: 3px solid var(--theme-secondary);
+    border-bottom-left-radius: 2rem;
+    left: -2rem;
+    top: -2rem;
+}
+
+.curly-brace > div:last-child:after {  
+    border-bottom: 3px solid var(--theme-secondary);
+    border-bottom-right-radius: 2rem;
+    top: -2rem;
+    right: -2rem;
+}
+
+.latent-vector-diagram {
+    text-align: center;
+    color: var(--theme-secondary);
+    height: 100%;
+}
+
+#latent-diagram-size {
+    color: var(--blue-lighter);
+    font-weight: 800;
+    font-size: 2rem;
+    margin-top: -1rem;
+}
+
+.latent-loss-arrows {
+    position: absolute;
+    display: flex;
+    justify-content: space-between;
+    width: 102%;
+    top: calc(30% - 100px);
+    left: 0;
+    pointer-events: none;
+}
+
+#arrow-left-pointer-events,
+#arrow-right-pointer-events {
+    pointer-events: auto;
+    height: 100%;
+    width: 6rem;
+    position: absolute;
+    top: 0;
+}
+
+#arrow-left-pointer-events {
+    left: -2rem;
+}
+
+#arrow-right-pointer-events {
+    right: -2rem;
+}
+
+.arrow-left,
+.arrow-right {
+    border: 4px solid;
+    border-color: transparent transparent transparent var(--theme-secondary);
+    border-radius: 50%;
+    height: 18rem;
+    width: 10rem;
+}
+
+.arrow-left:after,
+.arrow-right:before {
+    content: "";
+    position: absolute;
+    height: 2rem;
+    width: 2rem;
+    transform: rotate(10deg);
+}
+
+.arrow-right {
+    border-color: transparent var(--theme-secondary) transparent transparent;
+    right: 0;
+}
+
+.arrow-left:after {
+    border-right: 4px solid var(--theme-secondary);
+    border-bottom: 4px solid var(--theme-secondary);
+    bottom: 2rem;
+    left: 0.4rem;
+}
+
+.arrow-right:before {
+    content: "";
+    position: absolute;
+    border-left: 4px solid var(--theme-secondary);
+    border-top: 4px solid var(--theme-secondary);
+    height: 2rem;
+    width: 2rem;
+    top: 2rem;
+    right: 0.4rem;
+}
+
+.arrow-left:before,
+.arrow-right:after {
+    content: "NLL";
+    font-weight: 600;
+    font-size: 2rem;
+    color: var(--blue-lighter);
+    position: absolute;
+    background-color: black;
+}
+
+.arrow-left:before {
+    left: -1rem;
+    top: 2rem;
+}
+
+.arrow-right:after {
+    content: "MMD";
+    right: -1rem;
+    bottom: 2rem;
+}
+
+.graph-model-itermediate-step {
+    position: relative;
+}
+
+.forward-arrow {
+    height: var(--forward-arrow-height);
+    width: 180%;
+    left: -60%;
+    top: calc(50% - var(--forward-arrow-height)/2);
+    background: linear-gradient(to right, transparent 0%, var(--theme-secondary) 56%);
+    position: absolute;
+    pointer-events: none;
+}
+
+.forward-arrow:hover {
+    background-position: left;
+}
+
+.forward-arrow:after {
+    content: "";
+    position: absolute;
+    border: calc(var(--forward-arrow-height)/2) solid transparent;
+    border-left-color: var(--theme-secondary);
+    top: 0;
+    right: calc(-1*var(--forward-arrow-height));
+}
+
+.forward-arrow:before {
+    content: "ENCODING";
+    color: black;
+    opacity: 0.45;
+    font-size: 1.8rem;
+    font-weight: bolder;
+    letter-spacing: 2px;
+    font-style: italic;
+    display: block;
+    text-align: right;
+    line-height: var(--forward-arrow-height);
+}
+
+.graph-model-itermediate-step:last-of-type .forward-arrow:before {
+    content: "DECODING";
+}
+
+.graph[style="visibility: visible;"] {
+    filter: grayscale(1);
+    opacity: 0.3;
+    transition: filter 0.1s linear, opacity 0.1s linear;
+}
+
+/* Overwriting bootstrap tooltip styling */
+.tooltip {
+    --bs-tooltip-arrow-height: 1.5rem;
+    --bs-tooltip-arrow-width: 1.5rem;
+    --bs-tooltip-bg: white;
+    --bs-tooltip-color: var(--grey-dark);
+    --bs-tooltip-font-size: 1.4rem;
+    --bs-tooltip-padding-x: 1rem;
+    --bs-tooltip-padding-y: 1rem;
+    --bs-tooltip-max-width: 30rem;
 }

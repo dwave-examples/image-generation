@@ -24,18 +24,17 @@ def greedy_get_subgraph(
     random_seed: Optional[int],
     graph: Optional[nx.Graph] = None,
     qpu: Optional[str] = None,
-) -> tuple[nx.Graph, dict]:
-    """TODO
+) -> nx.Graph:
+    """Finds a subgraph of the QPU with latent space size number of nodes.
 
     Args:
-        n_nodes: TODO
-        random_seed: TODO
-        graph: TODO
+        n_nodes: The number of nodes for the subgraph (equal to the latent space size).
+        random_seed: The random seed for node selection.
+        graph: The full QPU graph.
         qpu: The selected QPU.
 
     Returns:
-        nx.Graph: TODO
-        dict: TODO
+        nx.Graph: The subgraph of the QPU with latent space size number of nodes.
     """
     generator = random.Random(random_seed)
     if graph is None:
@@ -81,11 +80,24 @@ def greedy_get_subgraph(
         selected_nodes.append(target_node)
 
     subgraph = graph.subgraph(selected_nodes)
+
+    return subgraph
+
+def get_graph_mapping(graph: Optional[nx.Graph]) -> tuple[nx.Graph, dict]:
+    """Maps a graph of the QPU to the encoded latent data.
+
+    Args:
+        graph: The graph of the QPU with latent space size number of nodes.
+
+    Returns:
+        nx.Graph: The input graph with qubit nodes mapped to ints from 0 to len(graph)
+        dict: A mapping of qubits to integers from 0 to len(graph)
+    """
     mapping = {
-        physical: logical for (physical, logical) in zip(subgraph.nodes(), range(len(subgraph)))
+        physical: logical for (physical, logical) in zip(graph.nodes(), range(len(graph)))
     }
 
-    return nx.relabel_nodes(subgraph, mapping), mapping
+    return nx.relabel_nodes(graph, mapping), mapping
 
 
 def get_sampler_and_sampler_kwargs(
@@ -109,8 +121,9 @@ def get_sampler_and_sampler_kwargs(
     """
 
     qpu = DWaveSampler(solver=qpu)
-    graph = qpu.to_networkx_graph()
-    graph, mapping = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=graph)
+    qpu_graph = qpu.to_networkx_graph()
+    subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
+    mapped_graph, mapping = get_graph_mapping(subgraph)
 
     sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
     linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
@@ -124,7 +137,7 @@ def get_sampler_and_sampler_kwargs(
         label="Examples - ML MNIST Image Gen",
     )
 
-    return sampler, sampler_kwargs, graph, linear_range, quadratic_range
+    return sampler, sampler_kwargs, mapped_graph, linear_range, quadratic_range
 
 
 def get_latent_to_discrete(

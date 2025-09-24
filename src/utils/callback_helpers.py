@@ -15,14 +15,23 @@
 from __future__ import annotations
 
 import json
+import random
 import time
 from pathlib import Path
 from typing import Optional
+from src.utils.global_vars import LATENT_ENCODED_FILE, LATENT_QPU_FILE, STEP_1_FILE, STEP_2_FILE, STEP_4_FILE, STEP_5_FILE
+import torch
 
+import networkx as nx
+import dwave_networkx as dnx
+from dwave.system import DWaveSampler
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
+from src.model_wrapper import get_dataset
 from plotly import graph_objects as go
+from torchvision.utils import save_image
 
-from demo_configs import SHARPEN_OUTPUT
+from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT, THEME_COLOR_SECONDARY
+from src.utils.common import get_graph_mapping, greedy_get_subgraph
 
 MODEL_PATH = Path("models")
 JSON_FILE_DIR = "generated_json"
@@ -31,6 +40,23 @@ IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
 
+def get_example_image(index: int = 0) -> torch.Tensor:
+    """Gets the image at ``index`` in the MNIST dataset.
+
+    Args:
+        index: Which MNIST image to get, defaults to the first.
+
+    Returns:
+        example_image: The tensor for an image from the MNIST dataset at ``index``. This is always
+        the same image for the same index.
+    """
+    dataset = get_dataset(image_size=32)
+
+    example_image = dataset[index][0]
+
+    save_image(example_image, STEP_1_FILE)
+
+    return example_image
 
 def create_model_files(
     model: DiscreteVariationalAutoencoder,
@@ -64,12 +90,46 @@ def create_model_files(
                 "image_size": model.IMAGE_SIZE,
                 "batch_size": model.BATCH_SIZE,
                 "dateset_size": model.DATASET_SIZE,
+                "random_seed": model.RANDOM_SEED,
             },
             f,
         )
 
     with open(MODEL_PATH / file_name / "losses.json", "w") as f:
         json.dump(loss_data, f)
+
+
+def generate_model_diagram(model: DiscreteVariationalAutoencoder, example_image: torch.Tensor):
+    """Generates images of each step in the model diagram.
+
+    Args:
+        model: The DVAE model.
+        example_image: A tensor to show in the model diagram UI as an example.
+    """
+    # Update saved UI images
+    step_2 = model._dvae.encoder.conv(example_image)
+    save_image(step_2[0].unsqueeze(1), STEP_2_FILE, padding=1)
+
+    latents = model._dvae.encoder(example_image)
+    discretes = model._dvae.latent_to_discrete(latents, 1)
+    with open(LATENT_ENCODED_FILE, "w") as f:
+        json.dump(discretes[0, 0].tolist(), f)
+
+    step_4 = model._dvae.decoder.merge_batch_dim_and_replica_dim(
+        model._dvae.decoder.make_2x2_images(
+            model._dvae.decoder.increase_latent_dim(discretes)
+        )
+    )
+    save_image(
+        step_4[0].unsqueeze(1),
+        STEP_4_FILE,
+        normalize=True,
+        scale_each=True,
+        padding=1
+    )
+
+    step_5 = model._dvae.decoder(discretes)
+    save_image(step_5[0], STEP_5_FILE)
 
 
 def execute_training(
@@ -79,6 +139,7 @@ def execute_training(
     qpu: str,
     n_latents: int,
     loss_data: Optional[list] = None,
+    example_image: Optional[torch.Tensor] = None,
 ) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
     """Orchestrates training or tuning of model.
 
@@ -88,6 +149,7 @@ def execute_training(
         qpu: The selected QPU.
         n_latents: The size of the latent space for the training.
         loss_data: Old loss data from previous training.
+        example_image: A tensor to show in the model diagram UI as an example.
 
     Returns:
         fig_output: The generated image output.
@@ -95,6 +157,9 @@ def execute_training(
         fig_mse_loss: The graph showing the MSE Loss.
         fig_total_loss: The graph showing the total Loss (MMD + MSE).
     """
+    if example_image is not None and GENERATE_NEW_MODEL_DIAGRAM:
+        example_image = example_image.unsqueeze(0)
+
     for epoch in range(n_epochs):
         start_time = time.perf_counter()
         print(f"Starting epoch {epoch + 1}/{n_epochs}")
@@ -103,6 +168,9 @@ def execute_training(
         for i, batch in enumerate(model._dataloader):
             set_progress((str(total * epoch + i), str(total * n_epochs)))
             mse_loss = model.step(batch, epoch)
+
+            if example_image is not None and GENERATE_NEW_MODEL_DIAGRAM:
+                generate_model_diagram(model, example_image)
 
         learning_rate_dvae = model._tpar["dvae_lr_schedule"][model._tpar["opt_step"]]
         learning_rate_grbm = model._tpar["grbm_lr_schedule"][model._tpar["opt_step"]]
@@ -141,3 +209,163 @@ def execute_training(
         )
 
     return fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss
+
+
+def get_edge_trace(
+    G: nx.Graph, node_coords: dict[int, tuple], color: str, line_width: float
+) -> go.Scatter:
+    """Create a Plotly scatter trace of graph edges.
+
+    Args:
+        G: The graph to plot.
+        node_coords: Dictionary mapping nodes to (x, y) coordinates.
+        color: The color of the edges.
+        line_width: The width of the edges.
+
+    Returns:
+        go.Scatter: A Plotly scatter trace of edges.
+    """
+    edge_x = []
+    edge_y = []
+    for start, end in G.edges():
+        x0, y0 = node_coords[start]
+        x1, y1 = node_coords[end]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y, line=dict(width=line_width, color=color), hoverinfo="none", mode="lines"
+    )
+
+    return edge_trace
+
+
+def get_node_trace(
+    G: nx.Graph,
+    node_coords: dict[int, tuple],
+    mapping: dict[int, int],
+    file_name: str,
+) -> go.Scatter:
+    """Create a Plotly scatter trace of graph nodes.
+
+    Args:
+        G: The graph to plot.
+        node_coords: Dictionary mapping nodes to (x, y) coordinates.
+        mapping: The mapping from node to latent index.
+        file_name: The file name of the latent vector.
+
+    Returns:
+        go.Scatter: A Plotly scatter trace of nodes.
+    """
+    node_x = [node_coords[node][0] for node in G.nodes()]
+    node_y = [node_coords[node][1] for node in G.nodes()]
+
+    try:
+        with open(file_name, "r") as f:
+            latent = json.load(f)
+
+        color_mapping = [GRAPH_COLORS[int(latent[i] > 0)] for i in mapping]
+
+    except Exception:  # Expected when QPU or latents setting is updated
+        print(
+            "Accurate latent color mapping not available for the requested graph nodes.",
+            "Generating random data."
+        )
+        random.seed(10)
+        rand_nodes = [random.randint(0, 1) for _ in G.nodes()]
+        color_mapping = [GRAPH_COLORS[node] for node in rand_nodes]
+        rand_latent = [1 if node else -1 for node in rand_nodes]
+
+        with open(file_name, "w") as f:
+            json.dump(rand_latent, f)
+
+    node_trace = go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode="markers",
+        hoverinfo="text",
+        marker=dict(
+            color=color_mapping,
+            size=5,
+        ),
+    )
+
+    return node_trace
+
+
+def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int], file_name: str, show_edges: bool=True) -> go.Figure:
+    """Generate a Plotly fig of a graph with highlighted subgraph.
+
+    Args:
+        G: The complete graph.
+        node_coords: Dictionary mapping nodes to (x, y) coordinates.
+        mapping: The mapping from node to latent index.
+        file_name: The file name of the latent vector.
+        show_edges: Whether to create edges for the graph.
+
+    Returns:
+        go.Figure: A Plotly figure showing a graph.
+    """
+    data = []
+
+    if show_edges:
+        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.3)
+        data.append(edge_trace)
+
+    node_trace = get_node_trace(G, node_coords, mapping, file_name)
+    data.append(node_trace)
+
+    fig = go.Figure(
+        data=data,
+        layout=go.Layout(
+            showlegend=False,
+            hovermode="closest",
+            margin=dict(b=0, l=0, r=0, t=0),
+            paper_bgcolor="rgba(0, 0, 0, 0)",
+            plot_bgcolor="rgba(0, 0, 0, 0)",
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        ),
+    )
+
+    return fig
+
+
+def generate_model_fig(
+    qpu: str, n_latents: int, random_seed: int
+) -> tuple[go.Figure, go.Figure, list]:
+    """Generates a figure of the machine learning model.
+
+    Args:
+        qpu: The selected qpu title.
+        n_latents: The size of the latent space.
+        random_seed: The random seed for node selection.
+
+    Returns:
+        fig_output: The generated image output.
+        fig_reconstructed: The image comparing the reconstructed image to the original.
+        latent_mapping: The mapping from node to latent index.
+    """
+    qpu = DWaveSampler(solver=qpu)
+    qpu_graph = qpu.to_networkx_graph()
+    subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
+    _, mapping = get_graph_mapping(subgraph)
+
+    latent_mapping = [mapping[node] for node in subgraph.nodes()]
+
+    qpu_shape = qpu.properties["topology"]["shape"][0]
+    qpu_topology = qpu.properties["topology"]["type"]
+
+    if qpu_topology == "pegasus":
+        node_coords = dnx.drawing.pegasus_layout(dnx.pegasus_graph(qpu_shape), crosses=True)
+    elif qpu_topology == "zephyr":
+        node_coords = dnx.drawing.zephyr_layout(dnx.zephyr_graph(qpu_shape))
+    elif qpu_topology == "chimera":
+        node_coords = dnx.drawing.chimera_layout(dnx.chimera_graph(qpu_shape))
+    else:
+        raise ValueError(f"Unknown QPU topology: {qpu_topology}")
+
+    fig_qpu = get_fig(subgraph, node_coords, latent_mapping, LATENT_QPU_FILE)
+    fig_not_qpu = get_fig(subgraph, node_coords, latent_mapping, LATENT_ENCODED_FILE, False)
+
+    return fig_qpu, fig_not_qpu, latent_mapping

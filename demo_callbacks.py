@@ -17,19 +17,27 @@ from __future__ import annotations
 import json
 import math
 import os
+import random
 import re
 from pathlib import Path
 from typing import NamedTuple
+import torch
 
 import dash
 import plotly.io as pio
-from dash import MATCH
+from dash import ALL, ctx, MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
 
-from demo_configs import SHARPEN_OUTPUT
-from demo_interface import SOLVERS, generate_model_data, generate_options, generate_problem_details_table
+from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
+from demo_interface import (
+    SOLVERS,
+    generate_latent_vector,
+    generate_model_data,
+    generate_options,
+    generate_problem_details_table
+)
 from src.model_wrapper import ModelWrapper
 from src.utils.callback_helpers import (
     IMAGE_GEN_FILE_PREFIX,
@@ -40,6 +48,12 @@ from src.utils.callback_helpers import (
     PROBLEM_DETAILS_PATH,
     create_model_files,
     execute_training,
+    generate_model_diagram,
+    generate_model_fig,
+)
+
+from src.utils.global_vars import (
+    STEP_4_FILE, STEP_5_FILE, LATENT_ENCODED_FILE, STEP_2_FILE, LATENT_QPU_FILE
 )
 
 
@@ -88,32 +102,188 @@ def toggle_popup(popup_toggle: list[int]) -> str:
 
 
 @dash.callback(
+    Output("step-2-encode-img", "src", allow_duplicate=True),
+    Output("step-4-decode-img", "src", allow_duplicate=True),
+    Output("step-5-output-img", "src", allow_duplicate=True),
+    Output("fig-qpu-graph", "figure", allow_duplicate=True),
+    Output("fig-encoded-graph", "figure", allow_duplicate=True),
+    Output("latent-space-vector", "children"),
+    inputs=[
+        Input({"type": "progress", "index": ALL}, "value"),
+        State("fig-qpu-graph", "figure"),
+        State("fig-encoded-graph", "figure"),
+        State("latent-mapping", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_model_diagram_imgs(
+    progress: int,
+    fig_qpu: go.Figure,
+    fig_encoded: go.Figure,
+    latent_mapping: list,
+) -> tuple[str, str, str, go.Figure, go.Figure, list]:
+    """Force refresh images to get around Dash caching. Updates image src with a incrementing
+    query string.
+
+    Args:
+        progress: The train or tune progress status.
+        fig_qpu: The QPU graph figure.
+        fig_encoded: The not QPU graph figure.
+        latent_mapping: The mapping of the nodes to latent space indices.
+
+    Returns:
+        step-2-encode-img: The src url for the encode image.
+        step-4-decode-img: The src url for the decode image.
+        step-5-output-img: The src url for the output image.
+        fig-qpu-graph: The QPU graph figure.
+        fig-encoded-graph: The not QPU graph figure.
+        latent-space-vector: The Dash HTML for the plus and minus ones visual vector.
+    """
+    if not GENERATE_NEW_MODEL_DIAGRAM:
+        raise PreventUpdate
+
+    fig_qpu = go.Figure(fig_qpu)
+    fig_encoded = go.Figure(fig_encoded)
+
+    with open(LATENT_QPU_FILE, "r") as f:
+        latent_qpu = json.load(f)
+
+    with open(LATENT_ENCODED_FILE, "r") as f:
+        latent_encoded = json.load(f)
+
+    color_mapping_qpu = [GRAPH_COLORS[int(latent_qpu[i] > 0)] for i in latent_mapping]
+    color_mapping_encoded = [GRAPH_COLORS[int(latent_encoded[i] > 0)] for i in latent_mapping]
+
+    fig_qpu.update_traces(marker=dict(color=color_mapping_qpu))
+    fig_encoded.update_traces(marker=dict(color=color_mapping_encoded))
+
+    return (
+        f"{STEP_2_FILE}?interval={progress}",
+        f"{STEP_4_FILE}?interval={progress}",
+        f"{STEP_5_FILE}?interval={progress}",
+        fig_qpu,
+        fig_encoded,
+        generate_latent_vector(latent_encoded[:5], latent_encoded[-1]),
+    )
+
+
+class CheckQpuAndUpdateModelReturn(NamedTuple):
+    """Return type for the ``check_qpu_and_update_model`` callback function."""
+
+    popup_classname: str = "display-none"
+    generate_button_disabled: bool = False
+    model_details: dict = dash.no_update
+    fig_qpu_graph: go.Figure = dash.no_update
+    fig_encoded_graph: go.Figure = dash.no_update
+    latent_diagram_size: int = dash.no_update
+    latent_mapping: list[int] = dash.no_update
+    step_2_img: str = dash.no_update
+    step_4_img: str = dash.no_update
+    step_5_img: str = dash.no_update
+
+@dash.callback(
     Output("popup", "className"),
     Output("generate-button", "disabled"),
     Output("model-details", "children"),
-    Input("model-file-name", "value"),
+    Output("fig-qpu-graph", "figure"),
+    Output("fig-encoded-graph", "figure"),
+    Output("latent-diagram-size", "children"),
+    Output("latent-mapping", "data"),
+    Output("step-2-encode-img", "src"),
+    Output("step-4-decode-img", "src"),
+    Output("step-5-output-img", "src"),
+    inputs=[
+        Input("model-file-name", "value"),
+        Input("qpu-setting", "value"),
+        Input("n-latents", "value"),
+        Input("setting-tabs", "value"),
+        State("example-image", "data"),
+    ]
 )
-def check_qpu_and_update_model(model_file_name: str) -> tuple[str, bool]:
+def check_qpu_and_update_model(
+    model_file_name: str,
+    qpu: str,
+    n_latents: int,
+    setting_tabs_value: str,
+    example_image: list,
+) -> CheckQpuAndUpdateModelReturn:
     """Checks whether user has access to QPU associated with model and updates the model details
     when model changes.
 
     Args:
-        model: The currently selected model
+        model: The currently selected model.
+        qpu: The selected QPU.
+        n_latents: The dimension of the latent space.
+        setting_tabs_value: The currently selected settings tab.
+        example_image: The example image to show all the steps for in the UI.
 
     Returns:
-        popup-classname: The class name to hide the popup.
-        generate-button-disabled: Whether to disable or enable the Generate button.
-        model-details-children: The model details to display.
+        CheckQpuAndUpdateModelReturn named tuple:
+            popup_classname: The class name to hide the popup.
+            generate_button_disabled: Whether to disable or enable the Generate button.
+            model_details: The model details to display.
+            fig_qpu_graph: The QPU graph figure.
+            fig_encoded_graph: The not QPU graph figure.
+            latent_diagram_size: The dimension of the latent space.
+            latent_mapping: The mapping of the nodes to latent space indices.
+            step_2_img: The src url for the encode image.
+            step_4_img: The src url for the decode image.
+            step_5_img: The src url for the output image.
     """
-    with open(MODEL_PATH / model_file_name / "parameters.json") as file:
-        model_data = json.load(file)
+    switched_to_generate_tab = ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
 
-    model_details = generate_model_data(model_data)
+    # If first load, or a new model is chosen, or the settings tab is changed to "generate"
+    if not ctx.triggered_id or ctx.triggered_id == "model-file-name" or switched_to_generate_tab:
+        with open(MODEL_PATH / model_file_name / "parameters.json") as file:
+            model_data = json.load(file)
 
-    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return "", True, model_details
+        model_details = generate_model_data(model_data)
 
-    return "display-none", False, model_details
+        # If model_data has a QPU that is no longer available, show warning popup
+        if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
+            return CheckQpuAndUpdateModelReturn(
+                popup_classname="",
+                generate_button_disabled=True,
+                model_details=model_details,
+            )
+
+        # Create model instance to generate model diagram images
+        model = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
+        model.load(file_path=MODEL_PATH / model_file_name)
+
+        # Dash converts the tensor to a list of floats, convert back to tensor
+        example_image = torch.tensor(example_image, dtype=torch.float32)
+        example_image = example_image.unsqueeze(0)
+        generate_model_diagram(model, example_image)
+
+        fig_qpu, fig_encoded, latent_mapping = generate_model_fig(
+            model_data["qpu"],
+            model_data["n_latents"],
+            model_data["random_seed"],
+        )
+
+        force_refresh = random.randint(1, 9999999)
+
+        return CheckQpuAndUpdateModelReturn(
+            model_details=model_details,
+            fig_qpu_graph=fig_qpu,
+            fig_encoded_graph=fig_encoded,
+            latent_diagram_size=model_data["n_latents"],
+            latent_mapping=latent_mapping,
+            step_2_img=f"{STEP_2_FILE}?force_refresh={force_refresh}",
+            step_4_img=f"{STEP_4_FILE}?force_refresh={force_refresh}",
+            step_5_img=f"{STEP_5_FILE}?force_refresh={force_refresh}",
+        )
+
+    # No model data, proceed with defaults
+    fig_qpu, fig_encoded, latent_mapping = generate_model_fig(qpu, n_latents, 4)
+
+    return CheckQpuAndUpdateModelReturn(
+        fig_qpu_graph=fig_qpu,
+        fig_encoded_graph=fig_encoded,
+        latent_diagram_size=n_latents,
+        latent_mapping=latent_mapping,
+    )
 
 
 @dash.callback(
@@ -402,6 +572,7 @@ def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpoch
         State("n-latents", "value"),
         State({"type": "n-epochs", "index": 0}, "value"),
         State("file-name", "value"),
+        State("example-image", "data"),
     ],
     running=[
         (Output("cancel-training-button", "className"), "", "display-none"),
@@ -419,7 +590,13 @@ def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpoch
     prevent_initial_call=True,
 )
 def train(
-    set_progress, train_click: int, qpu: str, n_latents: int, n_epochs: int, file_name: str
+    set_progress,
+    train_click: int,
+    qpu: str,
+    n_latents: int,
+    n_epochs: int,
+    file_name: str,
+    example_image: list,
 ) -> tuple[go.Figure, go.Figure, go.Figure, go.Figure, str, str]:
     """Runs training and updates UI accordingly.
 
@@ -433,6 +610,7 @@ def train(
         n_latents: The value of the latents setting.
         n_epochs: The value of the epochs setting.
         file_name: The file name to save to.
+        example_image: The example image to show all the steps for in the UI.
 
     Returns:
         A tuple containing all outputs to be used when updating the HTML
@@ -447,9 +625,12 @@ def train(
     """
     model = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
+    # Dash converts the tensor to a list of floats, convert back to tensor
+    example_image = torch.tensor(example_image, dtype=torch.float32)
+
     model.train_init(n_epochs)
     fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
-        set_progress, model, n_epochs, qpu, n_latents
+        set_progress, model, n_epochs, qpu, n_latents, example_image=example_image
     )
 
     create_model_files(
@@ -504,6 +685,7 @@ class GenerateReturn(NamedTuple):
         State("model-file-name", "value"),
         State("tune-params", "value"),
         State({"type": "n-epochs", "index": 1}, "value"),
+        State("example-image", "data"),
     ],
     running=[
         (Output("cancel-generation-button", "className"), "", "display-none"),
@@ -526,6 +708,7 @@ def generate(
     model_file_name: str,
     tune_parameters: list,
     n_epochs: int,
+    example_image: list,
 ) -> GenerateReturn:
     """Runs generation and updates UI accordingly.
 
@@ -538,6 +721,7 @@ def generate(
         model_file_name: The currently selected model directory name.
         tune_parameters: Whether to tune the parameters while generating.
         n_epochs: The number of epochs for the parameter tuning.
+        example_image: The example image to show all the steps for in the UI.
 
     Returns:
         A named tuple, GenerateReturn, containing all outputs to be used when updating the HTML
@@ -566,9 +750,12 @@ def generate(
     model.load(file_path=MODEL_PATH / model_file_name)
 
     if tune_parameters:
+        # Dash converts the tensor to a list of floats, convert back to tensor
+        example_image = torch.tensor(example_image, dtype=torch.float32)
+
         model.train_init(n_epochs)
         fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
-            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data
+            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data, example_image=example_image
         )
 
         model_file_name += f"_tuned_{n_epochs}_epochs"

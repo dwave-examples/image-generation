@@ -15,21 +15,26 @@
 """This file stores the Dash HTML layout for the app."""
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from dash import dcc, html
 from dwave.cloud import Client
 from plotly import graph_objects as go
+import dash_bootstrap_components as dbc
 
 from demo_configs import (
     DEFAULT_QPU,
     DESCRIPTION,
+    EXAMPLE_IMAGE_INDEX,
     MAIN_HEADER,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
+    THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
-from src.model_wrapper import display_dataset, get_dataset
+from src.utils.callback_helpers import get_example_image
+from src.utils.global_vars import LATENT_ENCODED_FILE, STEP_1_FILE, STEP_2_FILE, STEP_4_FILE, STEP_5_FILE_DEFAULT
 
 # Initialize available QPUs
 try:
@@ -42,17 +47,24 @@ try:
 except Exception:
     SOLVERS = ["No Leap Access"]
 
+# Initialize the latent diagram with either the available file or random +/- 1s
+try:
+    with open(LATENT_ENCODED_FILE, "r") as f:
+        latent_qpu = json.load(f)
 
-def display_input_data() -> go.Figure:
-    """Load data from MNIST and display in input tab.
+    LATENT_DIAGRAM_START = latent_qpu[:5]
+    LATENT_DIAGRAM_END = latent_qpu[-1]
 
-    Returns:
-        fig: a figure of MNIST data.
-    """
-    dataset = get_dataset(32, 32 * 22)
-    fig = display_dataset(dataset, 32)
+except Exception:
+    LATENT_DIAGRAM_START = [1, -1, -1, 1, -1]
+    LATENT_DIAGRAM_END = 1
 
-    return fig
+# An empty black fig to show when loading
+DEFAULT_FIG = go.Figure(
+    layout=go.Layout(paper_bgcolor="black", plot_bgcolor="black")
+)
+DEFAULT_FIG.update_xaxes(showgrid=False, zeroline=False)
+DEFAULT_FIG.update_yaxes(showgrid=False, zeroline=False)
 
 
 def slider(label: str, id: str, config: dict) -> html.Div:
@@ -381,6 +393,94 @@ def generate_problem_details_table(details: dict) -> html.Table:
     )
 
 
+def generate_latent_vector(
+    latent_start: list[int]=LATENT_DIAGRAM_START,
+    latent_end: int=LATENT_DIAGRAM_END
+) -> list:
+    """Generate the visual +/- ones vector
+
+    Args:
+        latent_start: The first few +/- ones to show before the ``...``.
+        latent_end: The last digit of the latent vector.
+
+    Returns:
+        A list containing the visuals for the first few +/- ones and the last +/- one.
+    """
+    latent_start_html = [
+        html.Div(
+            one, className=f"latent-{'plus' if one > 0 else 'minus'}"
+        ) for one in latent_start
+    ]
+
+    return [
+        *latent_start_html,
+        html.Div("..."),
+        html.Div(
+            latent_end,
+            className=f"latent-{'plus' if latent_end > 0 else 'minus'}"
+        ),
+    ]
+
+
+def generate_graph(type: str) -> list:
+    """Generate graph with loading.
+
+    Args:
+        type: Type of graph being displayed.
+
+    Returns:
+        A list the graph wrapped in dcc.Loading.
+    """
+
+    return dcc.Loading(
+        parent_className="graph",
+        type="circle",
+        color=THEME_COLOR_SECONDARY,
+        overlay_style={"visibility": "visible"},
+        delay_show=100,
+        children=[
+            html.Div(
+                dcc.Graph(
+                    id=f"fig-{type}-graph",
+                    responsive=True,
+                    config={
+                        "displayModeBar": False,
+                    },
+                    figure=DEFAULT_FIG,
+                ),
+                className="graph",
+                id=f"{type}-graph-wrapper",
+            ),
+        ]
+    )
+
+
+def generate_tooltip(title: str, description: str, target: str) -> list:
+    """Generate tooltip.
+
+    Args:
+        title: The title for the tooltip.
+        description: The description for the tooltip.
+        target: What id opens the tooltip.
+
+    Returns:
+        A tooltip.
+    """
+
+    return dbc.Tooltip(
+        children=html.Div(
+            [
+                html.H5(title),
+                html.P(description),
+            ],
+            className="dbc-tooltip-content"
+        ),
+        className="dbc-tooltip",
+        target=target,
+        delay={"show": 0, "hide": 100},
+    )
+
+
 def create_interface():
     """Set the application HTML."""
     return html.Div(
@@ -389,6 +489,8 @@ def create_interface():
             # Below are any temporary storage items, e.g., for sharing data between callbacks.
             dcc.Store(id="last-trained-model"),
             dcc.Store(id="last-saved-id"),
+            dcc.Store(id="latent-mapping"),
+            dcc.Store(id="example-image", data=get_example_image(EXAMPLE_IMAGE_INDEX)),
             dcc.Interval(id="epoch-checker", interval=500, disabled=True),
             # Header brand banner
             html.Div(
@@ -455,21 +557,95 @@ def create_interface():
                                 mobile_breakpoint=0,
                                 children=[
                                     dcc.Tab(
-                                        label="MNIST Training Data",
+                                        label="Machine Learning Model",
                                         id="input-tab",
                                         value="input-tab",  # used for switching tabs programatically
                                         className="tab",
                                         children=[
                                             html.Div(
-                                                dcc.Graph(
-                                                    figure=display_input_data(),
-                                                    id="fig-input",
-                                                    responsive=True,
-                                                    config={
-                                                        "displayModeBar": False,
-                                                    },
-                                                ),
-                                                className="graph",
+                                                [
+                                                    html.Img(
+                                                        src=STEP_1_FILE,
+                                                        id="step-1-input-img",
+                                                    ),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(
+                                                            src=STEP_2_FILE,
+                                                            id="step-2-encode-img",
+                                                        ),
+                                                    ], className="graph-model-itermediate-step"),
+                                                    html.Div(
+                                                        [
+                                                            generate_graph("qpu"),
+                                                            generate_graph("encoded"),
+                                                            html.Div([
+                                                                html.Div(id="arrow-left-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(id="arrow-right-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(className="arrow-left", id="arrow-left"),
+                                                                html.Div(className="arrow-right", id="arrow-right"),
+                                                            ], className="latent-loss-arrows"),
+                                                            html.Div([
+                                                                html.Div(generate_latent_vector(), id="latent-space-vector"),
+                                                                html.Div([html.Div(), html.Div()], className="curly-brace"),
+                                                                html.Div("256", id="latent-diagram-size")
+
+                                                            ], className="latent-vector-diagram", id="latent-vector-diagram"),
+                                                        ],
+                                                        className="latent-space-graph-wrapper",
+                                                    ),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(src=STEP_4_FILE, id="step-4-decode-img"),
+                                                    ], className="graph-model-itermediate-step"),
+                                                    html.Img(src=STEP_5_FILE_DEFAULT, id="step-5-output-img"),
+                                                ],
+                                                className="graph-model-wrapper"
+                                            ),
+                                            generate_tooltip(
+                                                "Input Image",
+                                                "An input image from the MNIST dataset.",
+                                                "step-1-input-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Encoding",
+                                                "Each collection of 4 pixels represents a feature of the input image.",
+                                                "step-2-encode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Quantum Computer Sample",
+                                                "The quantum computer is sampled to obtain a new list of +/- 1s. These +/- 1s can be decoded to create a new never before seen image.",
+                                                "qpu-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Mapping of Latent +/- 1s onto the Quantum Computer",
+                                                "Each +/- 1 of the latent representation is mapped to a qubit on the quantum computer. This allows for a comparison between the quantum computer and the latent representation.",
+                                                "encoded-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Negative Log-Likelihood (NLL)",
+                                                "NLL is a function that trains the quantum computer by comparing the quantum computer samples to the encoded images. This helps the quantum computer generate new +/- 1s that more accurately describe the encoded image.",
+                                                "arrow-left-pointer-events",
+                                            ),
+                                            generate_tooltip(
+                                                "Max Mean Discrepancy (MMD)",
+                                                "MMD is a function that trains the encoder to encode data into +/- 1s that more closely match the quantum computer's +/- 1s. NLL and MMD alternate to make the output of the quantum computer and the encoder as similar as possible.",
+                                                "arrow-right-pointer-events",
+                                            ),
+                                            generate_tooltip(
+                                                "Latent Representation",
+                                                "The encoded latent representation of the image. The number of +/- 1s is determined by the size of the latent space that was selected during training.",
+                                                "latent-vector-diagram",
+                                            ),
+                                            generate_tooltip(
+                                                "Decoding",
+                                                "Each collection of 4 pixels represents a feature of the output image.",
+                                                "step-4-decode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Output Image",
+                                                "The image decoded from the latent +/- 1s. The quality of the image can be impacted by the number of epochs, the size of the latent space, the batch size, and the QPU used.",
+                                                "step-5-output-img",
                                             ),
                                         ],
                                     ),

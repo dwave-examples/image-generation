@@ -39,7 +39,9 @@ Dash reads all css files contained in `/assets/` so no imports are necessary.
     --grey-dark: #222222;
     --font: "Helvetica Neue", sans-serif;
     --banner-height: 5.5rem;
-    --left-col-width: 42rem;
+    --left-col-width: 35rem;
     --problem-details-height: 8rem;
-    /*** Add new variables here ***/
+    --latent-vector-width: 23rem;
+    --forward-arrow-height: 6rem;
+    --blue-lighter: #79adec;  /* lighter varient of --blue-light */
 }

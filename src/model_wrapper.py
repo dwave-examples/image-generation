@@ -13,9 +13,11 @@
 # limitations under the License.
 
 
+import json
 from pathlib import Path
 from typing import Optional
 
+from src.utils.global_vars import LATENT_QPU_FILE
 import numpy as np
 import plotly.express as px
 import torch
@@ -62,7 +64,7 @@ def train_grbm(opt_step: int, epoch: int) -> bool:
     return epoch < 6 and opt_step % 10 == 0
 
 
-def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = None) -> DataLoader:
+def get_dataset(image_size: int) -> DataLoader:
     transform = Compose(
         [
             Resize((image_size, image_size)),
@@ -71,36 +73,31 @@ def get_dataset(image_size: int, batch_size: int, dataset_size: Optional[int] = 
         ]
     )
 
-    # Load the dataset and create the dataloader
+    # Load the dataset
     dataset = MNIST(
         root="data",
         train=True,
         download=True,
         transform=transform,
     )
+
+    return dataset
+
+
+def get_dataloader(
+    image_size: int,
+    batch_size: int,
+    dataset_size: Optional[int] = None,
+) -> DataLoader:
+    # Create the dataloader
+    dataset = get_dataset(image_size)
+
     if dataset_size:
         dataset = torch.utils.data.random_split(
             dataset, [dataset_size, len(dataset) - dataset_size]
         )[0]
 
     return DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-
-
-def display_dataset(dataset: DataLoader, num_rows: int) -> go.Figure:
-    batch = next(iter(dataset))[0]
-    reconstruction_tensor_for_plot = make_grid(batch.cpu(), nrow=num_rows)
-    fig = px.imshow(reconstruction_tensor_for_plot.permute(1, 2, 0))
-
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
-    fig.update_layout(
-        margin={"t": 0, "l": 0, "b": 0, "r": 0},
-        paper_bgcolor="black",
-        plot_bgcolor="black",
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
 
 
 class TrainingError(Exception):
@@ -224,7 +221,7 @@ class ModelWrapper:
             dataset_size: The number of images to use for training.
                 Default (``None``) uses all available images.
         """
-        self._dataloader = get_dataset(self.IMAGE_SIZE, batch_size, dataset_size)
+        self._dataloader = get_dataloader(self.IMAGE_SIZE, batch_size, dataset_size)
 
     def train_init(
         self,
@@ -371,6 +368,9 @@ class ModelWrapper:
                 quadratic_range=self.quadratic_range,
                 sample_params=self.sampler_kwargs,
             )
+
+        with open(LATENT_QPU_FILE, "w") as f:
+            json.dump(samples[0].tolist(), f)
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
         if sharpen:

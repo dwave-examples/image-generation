@@ -1,0 +1,8 @@
+MODEL_DIAGRAM_PATH = "static/model_diagram/"
+LATENT_ENCODED_FILE = MODEL_DIAGRAM_PATH + "latent_encoded.json"
+LATENT_QPU_FILE = MODEL_DIAGRAM_PATH + "latent_qpu.json"
+STEP_1_FILE = MODEL_DIAGRAM_PATH + "step_1_input.png"
+STEP_2_FILE = MODEL_DIAGRAM_PATH + "step_2_encode.png"
+STEP_4_FILE = MODEL_DIAGRAM_PATH + "step_4_decode.png"
+STEP_5_FILE = MODEL_DIAGRAM_PATH + "step_5_output.png"
+STEP_5_FILE_DEFAULT = MODEL_DIAGRAM_PATH + "step_5_output_default.png"
