@@ -34,6 +34,7 @@ from demo_configs import (
     THUMBNAIL,
 )
 from src.utils.callback_helpers import get_example_image
+from src.utils.global_vars import LATENT_ENCODED_FILE, STEP_1_FILE, STEP_2_FILE, STEP_4_FILE, STEP_5_FILE_DEFAULT
 
 # Initialize available QPUs
 try:
@@ -48,7 +49,7 @@ except Exception:
 
 # Initialize the latent diagram with either the available file or random +/- 1s
 try:
-    with open("static/model_diagram/latent_encoded.json", "r") as f:
+    with open(LATENT_ENCODED_FILE, "r") as f:
         latent_qpu = json.load(f)
 
     LATENT_DIAGRAM_START = latent_qpu[:5]
@@ -564,13 +565,13 @@ def create_interface():
                                             html.Div(
                                                 [
                                                     html.Img(
-                                                        src="static/model_diagram/step_1_input.png",
+                                                        src=STEP_1_FILE,
                                                         id="step-1-input-img",
                                                     ),
                                                     html.Div([
                                                         html.Div(className="forward-arrow"),
                                                         html.Img(
-                                                            src="static/model_diagram/step_2_encode.png",
+                                                            src=STEP_2_FILE,
                                                             id="step-2-encode-img",
                                                         ),
                                                     ], className="graph-model-itermediate-step"),
@@ -595,9 +596,9 @@ def create_interface():
                                                     ),
                                                     html.Div([
                                                         html.Div(className="forward-arrow"),
-                                                        html.Img(src="static/model_diagram/step_4_decode.png", id="step-4-decode-img"),
+                                                        html.Img(src=STEP_4_FILE, id="step-4-decode-img"),
                                                     ], className="graph-model-itermediate-step"),
-                                                    html.Img(src="static/model_diagram/step_5_output_default.png", id="step-5-output-img"),
+                                                    html.Img(src=STEP_5_FILE_DEFAULT, id="step-5-output-img"),
                                                 ],
                                                 className="graph-model-wrapper"
                                             ),

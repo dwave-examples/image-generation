@@ -460,6 +460,7 @@ progress::-webkit-progress-bar {
     transition: filter 0.1s linear, opacity 0.1s linear;
 }
 
+/* Overwriting bootstrap tooltip styling */
 .tooltip {
     --bs-tooltip-arrow-height: 1.5rem;
     --bs-tooltip-arrow-width: 1.5rem;

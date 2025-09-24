@@ -84,10 +84,10 @@ def greedy_get_subgraph(
     return subgraph
 
 def get_graph_mapping(graph: Optional[nx.Graph]) -> tuple[nx.Graph, dict]:
-    """Maps a graph of the QPU to 
+    """Maps a graph of the QPU to the encoded latent data.
 
     Args:
-        graph: Thebgraph of the QPU with latent space size number of nodes.
+        graph: The graph of the QPU with latent space size number of nodes.
 
     Returns:
         nx.Graph: The input graph with qubit nodes mapped to ints from 0 to len(graph)

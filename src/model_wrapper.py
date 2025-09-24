@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from src.utils.global_vars import LATENT_QPU_FILE
 import numpy as np
 import plotly.express as px
 import torch
@@ -368,7 +369,7 @@ class ModelWrapper:
                 sample_params=self.sampler_kwargs,
             )
 
-        with open("static/model_diagram/latent_qpu.json", "w") as f:
+        with open(LATENT_QPU_FILE, "w") as f:
             json.dump(samples[0].tolist(), f)
 
         images = self._dvae.decoder(samples.unsqueeze(1)).squeeze(1).clip(0.0, 1.0).detach().cpu()
