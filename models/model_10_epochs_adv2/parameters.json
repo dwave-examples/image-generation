@@ -1,1 +1,1 @@
-{"n_latents": 256, "n_epochs": 10, "prefactor": 0.05, "qpu": "Advantage2_system1.7", "num_read": 256, "loss_function": "mmd", "image_size": 32, "batch_size": 128, "dateset_size": null, "random_seed": 775321899904}
+{"n_latents": 256, "n_epochs": 10, "prefactor": 0.05, "qpu": "Advantage2_system1.8", "num_read": 256, "loss_function": "mmd", "image_size": 32, "batch_size": 128, "dateset_size": null}
