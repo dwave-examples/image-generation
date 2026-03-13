@@ -60,13 +60,14 @@ from src.utils.callback_helpers import (
 
 @dash.callback(
     Output({"type": "to-collapse-class", "index": MATCH}, "className"),
+    Output({"type": "collapse-trigger", "index": MATCH}, "aria-expanded"),
     inputs=[
         Input({"type": "collapse-trigger", "index": MATCH}, "n_clicks"),
         State({"type": "to-collapse-class", "index": MATCH}, "className"),
     ],
     prevent_initial_call=True,
 )
-def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
+def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> tuple[str, str]:
     """Toggles a 'collapsed' class that hides and shows some aspect of the UI.
 
     Args:
@@ -76,13 +77,14 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
 
     Returns:
         str: The new class name of the thing to collapse.
+        str: The aria-expanded value.
     """
 
     classes = to_collapse_class.split(" ") if to_collapse_class else []
     if "collapsed" in classes:
         classes.remove("collapsed")
-        return " ".join(classes)
-    return to_collapse_class + " collapsed" if to_collapse_class else "collapsed"
+        return " ".join(classes), "true"
+    return to_collapse_class + " collapsed" if to_collapse_class else "collapsed", "false"
 
 
 @dash.callback(
@@ -482,8 +484,8 @@ class UpdateEachEpochReturn(NamedTuple):
     Output("results-tab", "disabled"),
     Output("loss-tab", "disabled"),
     Output("tabs", "value"),
-    Output("results-tab", "label"),
-    Output("loss-tab", "label"),
+    Output("results-tab", "children"),
+    Output("loss-tab", "children"),
     Output("problem-details", "children"),
     inputs=[
         Input("epoch-checker", "n_intervals"),
@@ -583,11 +585,11 @@ def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpoch
         State("example-image", "data"),
     ],
     running=[
-        (Output("cancel-training-button", "className"), "", "display-none"),
-        (Output("train-button", "className"), "display-none", ""),
+        (Output("cancel-training-button", "style"), {}, {"display": "none"}),
+        (Output("train-button", "style"), {"display": "none"}, {}),
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
-        (Output("results-tab", "label"), "Training...", "Generated Images"),
-        (Output("loss-tab", "label"), "Training...", "Loss Graphs"),
+        (Output("results-tab", "children"), "Training...", "Generated Images"),
+        (Output("loss-tab", "children"), "Training...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
@@ -696,11 +698,11 @@ class GenerateReturn(NamedTuple):
         State("example-image", "data"),
     ],
     running=[
-        (Output("cancel-generation-button", "className"), "", "display-none"),
-        (Output("generate-button", "className"), "display-none", ""),
+        (Output("cancel-generation-button", "style"), {}, {"display": "none"}),
+        (Output("generate-button", "style"), {"display": "none"}, {}),
         (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
-        (Output("results-tab", "label"), "Generating...", "Generated Images"),
-        (Output("loss-tab", "label"), "Generating...", "Loss Graphs"),
+        (Output("results-tab", "children"), "Generating...", "Generated Images"),
+        (Output("loss-tab", "children"), "Generating...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     progress=[
