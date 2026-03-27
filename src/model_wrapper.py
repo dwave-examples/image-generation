@@ -21,10 +21,14 @@ import numpy as np
 import plotly.express as px
 import torch
 import yaml
+
 from dwave.plugins.torch.models import (
     DiscreteVariationalAutoencoder,
     GraphRestrictedBoltzmannMachine,
 )
+from dwave.plugins.torch.nn.functional import maximum_mean_discrepancy_loss
+from dwave.plugins.torch.nn.modules.kernels import GaussianKernel
+
 from einops import rearrange
 from plotly import graph_objects as go
 from torch.utils.data import DataLoader
@@ -36,7 +40,7 @@ from demo_configs import LOWER_THRESHOLD, UPPER_THRESHOLD
 
 from .decoder import Decoder
 from .encoder import Encoder
-from .losses import RadialBasisFunction, mmd_loss, nll_loss
+from .losses import nll_loss
 from .utils.common import get_latent_to_discrete, get_sampler_and_sampler_kwargs
 from .utils.persistent_qpu_sampler import PersistentQPUSampleHelper
 
@@ -266,7 +270,7 @@ class ModelWrapper:
         self._tpar["opt_step"] = 0
 
         # use for self.LOSS_FUNCTION == "mmd":
-        self._tpar["kernel"] = RadialBasisFunction(num_features=7).to(self._device)
+        self._tpar["kernel"] = GaussianKernel(n_kernels=7).to(self._device)
 
         self._tpar["sample_set"] = None
 
@@ -301,16 +305,19 @@ class ModelWrapper:
             )
             self.losses["mse_losses"].append(mse_loss.item())
 
-            _mmd_loss = mmd_loss(
-                spins=spins,
-                kernel=self._tpar["kernel"],
-                grbm=self._grbm,
-                sampler=self.sampler,
-                sampler_kwargs=self.sampler_kwargs,
-                linear_range=self.linear_range,
-                quadratic_range=self.quadratic_range,
-                prefactor=self.PREFACTOR,
-            )
+            with torch.no_grad():
+                samples = self._grbm.sample( # type: ignore
+                    sampler=self.sampler,
+                    prefactor=self.PREFACTOR,
+                    linear_range=self.linear_range,
+                    quadratic_range=self.quadratic_range,
+                    device=spins.device,
+                    sample_params=self.sampler_kwargs,
+                )
+
+            spins = spins.reshape(-1, spins.shape[-1])
+
+            _mmd_loss = maximum_mean_discrepancy_loss(x=spins, y=samples, kernel=self._tpar["kernel"])
 
             dvae_loss = mse_loss + _mmd_loss
 
