@@ -307,14 +307,25 @@ class ModelWrapper:
             self.losses["mse_losses"].append(mse_loss.item())
 
             with torch.no_grad():
-                samples = self._grbm.sample( # type: ignore
-                    sampler=self.sampler,
-                    prefactor=self.PREFACTOR,
-                    linear_range=self.linear_range,
-                    quadratic_range=self.quadratic_range,
-                    device=spins.device,
-                    sample_params=self.sampler_kwargs,
-                )
+                try:
+                    samples = self._grbm.sample( # type: ignore
+                        sampler=self.sampler,
+                        prefactor=self.PREFACTOR,
+                        linear_range=self.linear_range,
+                        quadratic_range=self.quadratic_range,
+                        device=spins.device,
+                        sample_params=self.sampler_kwargs,
+                    )
+                except BinaryQuadraticModelStructureError:
+                    self._rebuild_sampler()
+                    samples = self._grbm.sample( # type: ignore
+                        sampler=self.sampler,
+                        prefactor=self.PREFACTOR,
+                        linear_range=self.linear_range,
+                        quadratic_range=self.quadratic_range,
+                        device=spins.device,
+                        sample_params=self.sampler_kwargs,
+                    )
 
             spins = spins.reshape(-1, spins.shape[-1])
 
@@ -330,17 +341,31 @@ class ModelWrapper:
         # train boltzmann machine
         if train_grbm(self._tpar["opt_step"], epoch):
             self._grbm_optimizer.zero_grad()
-            grbm_loss, self._tpar["sample_set"] = nll_loss(
-                spins=spins.detach(),
-                grbm=self._grbm,
-                sampler=self.sampler,
-                sampler_kwargs=self.sampler_kwargs,
-                linear_range=self.linear_range,
-                quadratic_range=self.quadratic_range,
-                prefactor=self.PREFACTOR,
-                persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
-                sample_set=self._tpar["sample_set"],
-            )
+            try:
+                grbm_loss, self._tpar["sample_set"] = nll_loss(
+                    spins=spins.detach(),
+                    grbm=self._grbm,
+                    sampler=self.sampler,
+                    sampler_kwargs=self.sampler_kwargs,
+                    linear_range=self.linear_range,
+                    quadratic_range=self.quadratic_range,
+                    prefactor=self.PREFACTOR,
+                    persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
+                    sample_set=self._tpar["sample_set"],
+                )
+            except BinaryQuadraticModelStructureError:
+                self._rebuild_sampler()
+                grbm_loss, self._tpar["sample_set"] = nll_loss(
+                    spins=spins.detach(),
+                    grbm=self._grbm,
+                    sampler=self.sampler,
+                    sampler_kwargs=self.sampler_kwargs,
+                    linear_range=self.linear_range,
+                    quadratic_range=self.quadratic_range,
+                    prefactor=self.PREFACTOR,
+                    persistent_qpu_sample_helper=self._tpar["persistent_qpu_sample_helper"],
+                    sample_set=self._tpar["sample_set"],
+                )
             grbm_loss.backward()
             self._grbm_optimizer.step()
 

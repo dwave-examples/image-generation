@@ -30,7 +30,7 @@ from plotly import graph_objects as go
 from torchvision.utils import save_image
 
 from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT, THEME_COLOR_SECONDARY
-from src.utils.common import get_graph_mapping, greedy_get_subgraph
+from src.utils.common import get_graph_mapping, greedy_get_subgraph, _try_zephyr_sublattice_fallback
 
 MODEL_PATH = Path("models")
 JSON_FILE_DIR = "generated_json"
@@ -358,13 +358,24 @@ def generate_model_fig(
     """
     qpu = DWaveSampler(solver=qpu)
     qpu_graph = qpu.to_networkx_graph()
-    subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
-    _, mapping = get_graph_mapping(subgraph)
+    qpu_topology = qpu.properties["topology"]["type"]
 
-    latent_mapping = [mapping[node] for node in subgraph.nodes()]
+    try:
+        subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
+        _, mapping = get_graph_mapping(subgraph)
+        latent_mapping = [mapping[node] for node in subgraph.nodes()]
+    except Exception:
+        if qpu_topology != "zephyr":
+            raise
+        fallback = _try_zephyr_sublattice_fallback(
+            n_nodes=n_latents, qpu_graph=qpu_graph, random_seed=random_seed
+        )
+        if fallback is None:
+            raise
+        subgraph, _ = fallback
+        latent_mapping = list(subgraph.nodes())
 
     qpu_shape = qpu.properties["topology"]["shape"][0]
-    qpu_topology = qpu.properties["topology"]["type"]
 
     if qpu_topology == "pegasus":
         node_coords = dnx.drawing.pegasus_layout(dnx.pegasus_graph(qpu_shape), crosses=True)
