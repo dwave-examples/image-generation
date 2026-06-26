@@ -24,15 +24,14 @@ Dash reads all css files contained in `/assets/` so no imports are necessary.
     --blue-bright: #03B8FF;
     --blue-light: #2A7DE1;
     --blue-dark: #074C91;
-    --blue-darker: #2d4376;;
+    --blue-darker: #2D4376;
     --blue-darkest: #202239;
     --red-light: #F57677;
     --red-dark: #AA3A3C;
-    --orange: #FF7006;
+    --orange: #F37820;
     --teal-light: #06ECDC;
     --teal: #17BEBB;
-    --teal-dark: #17BEBB;
-    --teal-darker: #008C82;
+    --teal-dark: #008C82;
     --grey-lighter: #F5F7FB;
     --grey-light: #DBDBDB;
     --grey: #AAAAAA;
@@ -46,5 +45,5 @@ Dash reads all css files contained in `/assets/` so no imports are necessary.
     --title-section-height: 13.5rem;
     --latent-vector-width: 14.375rem;
     --forward-arrow-height: 3.75rem;
-    --blue-lighter: #79adec;  /* lighter varient of --blue-light */
+    --blue-lighter: #79ADEC;  /* lighter variant of --blue-light */
 }

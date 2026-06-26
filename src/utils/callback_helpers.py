@@ -208,7 +208,7 @@ def execute_training(
             sharpen=SHARPEN_OUTPUT,
             save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
         )
-        fig_reconstructed = model.generate_reconstucted_samples(
+        fig_reconstructed = model.generate_reconstructed_samples(
             sharpen=SHARPEN_OUTPUT,
             save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
         )

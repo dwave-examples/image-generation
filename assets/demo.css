@@ -160,10 +160,13 @@ progress::-webkit-progress-bar {
 
 .model-details {
     margin-top: 1rem;
+    margin-bottom: 2rem;
 }
 
 .model-details p {
+    margin-top: 0.25rem;
     margin-bottom: 0;
+    font-size: 0.875rem;
 }
 
 .checklist label {

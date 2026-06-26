@@ -298,22 +298,22 @@ def check_qpu_and_update_model(
 
 @dash.callback(
     Output("tune-parameter-settings", "className"),
-    Input("tune-params", "value"),
+    Input("tune-params", "checked"),
 )
-def toggle_tuning_params(tune_params: list[int]) -> str:
+def toggle_tuning_params(tune_params: bool) -> str:
     """Show/hide tune parameter settings when Tune Parameters box is toggled.
 
     Args:
-        tune_params: The value of the Tune Parameters checkbox as a list.
+        tune_params: The value of the Tune Parameters checkbox.
 
     Returns:
         tune-parameter-settings-classname: The class name to show/hide the tune parameter settings.
     """
-    return "" if len(tune_params) else "display-none"
+    return "" if tune_params else "display-none"
 
 
 @dash.callback(
-    Output("model-file-name", "options"),
+    Output("model-file-name", "data"),
     Output("model-file-name", "value"),
     Input("last-trained-model", "data"),
 )
@@ -321,10 +321,10 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
     """Initializes the Trained Models dropdown options based on model files available.
 
     Args:
-        last_trained_model: The most recently trained model directiory name.
+        last_trained_model: The most recently trained model directory name.
 
     Returns:
-        model-file-name-options: The options for the Trained Model dropdown selection.
+        model-file-name-data: The options for the Trained Model dropdown selection.
         model-file-name-value: The value of the dropdown.
     """
     models = []
@@ -338,10 +338,10 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
         models.append(directory)
 
     if not len(models):
-        models = generate_options(["No Models Found (please train and save a model)"])
-
+        models = ["No Models Found (please train and save a model)"]
+    
     return (
-        models,
+        generate_options(models),
         last_trained_model if last_trained_model else models[0],
     )
 
@@ -693,7 +693,7 @@ class GenerateReturn(NamedTuple):
     inputs=[
         Input("generate-button", "n_clicks"),
         State("model-file-name", "value"),
-        State("tune-params", "value"),
+        State("tune-params", "checked"),
         State({"type": "n-epochs", "index": 1}, "value"),
         State("example-image", "data"),
     ],
@@ -716,7 +716,7 @@ def generate(
     set_progress,
     generate_click: int,
     model_file_name: str,
-    tune_parameters: list,
+    tune_parameters: bool,
     n_epochs: int,
     example_image: list,
 ) -> GenerateReturn:
@@ -781,7 +781,7 @@ def generate(
 
     else:
         fig_output = model.generate_output(latent_qpu_file=LATENT_QPU_FILE, sharpen=SHARPEN_OUTPUT)
-        fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
+        fig_reconstructed = model.generate_reconstructed_samples(sharpen=SHARPEN_OUTPUT)
 
     model.losses = loss_data
     fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()

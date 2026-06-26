@@ -437,7 +437,7 @@ class ModelWrapper:
 
         return fig_mse, fig_total
 
-    def generate_reconstucted_samples(
+    def generate_reconstructed_samples(
         self, sharpen: bool = False, save_to_file: str = ""
     ) -> go.Figure:
         """Generate reconstructed images from training data.

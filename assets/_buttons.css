@@ -70,3 +70,7 @@ button:disabled {
 button:focus-visible {
     box-shadow: 0 0 0 4px var(--teal);
 }
+
+.button-small {
+    padding: 0.35rem 1rem;
+}

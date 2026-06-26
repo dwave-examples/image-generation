@@ -14,21 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+input::placeholder {
+    color: #656565 !important;
+}
+
 /* Style rules for the dmc.Slider element */
 .slider {
     margin-bottom: 2rem;
 }
 
 .mantine-Slider-label,
-.mantine-Slider-markLabel {
+.mantine-Slider-markLabel,
+.mantine-RangeSlider-label,
+.mantine-RangeSlider-markLabel {
     font-family: var(--font);
 }
 
-.mantine-Slider-markLabel {
+.mantine-Slider-markLabel,
+.mantine-RangeSlider-markLabel {
     color: #666666;
 }
 
-.mantine-Slider-label {
+.mantine-Slider-label,
+.mantine-RangeSlider-label {
     background-color: white;
     color: var(--grey-dark);
     border: 1px solid var(--grey);
@@ -41,7 +49,9 @@ limitations under the License.
 }
 
 .mantine-Slider-label:before,
-.mantine-Slider-label:after {
+.mantine-RangeSlider-label:before,
+.mantine-Slider-label:after,
+.mantine-RangeSlider-label:after {
     content: '';
     display: block;
     position: absolute;
@@ -49,22 +59,25 @@ limitations under the License.
     height: 0;
 }
 
-.mantine-Slider-label:before {
+.mantine-Slider-label:before,
+.mantine-RangeSlider-label:before {
     left: 6px;
     top: -13px;
     border: 6px solid transparent;
     border-bottom-color: var(--grey);
 }
 
-.mantine-Slider-label:after {
+.mantine-Slider-label:after,
+.mantine-RangeSlider-label:after {
     left: 7px;
     top: -10px;
     border: 5px solid transparent;
     border-bottom-color: white;
 }
 
-/* Style rules for the dmc.NumberInput element */
-.mantine-NumberInput-input:focus-visible {
+/* Style rules for the dmc.NumberInput and dmc.TextInput elements */
+.mantine-NumberInput-input:focus-visible,
+.mantine-TextInput-input:focus-visible {
     box-shadow: 0 0 0 2px var(--teal);
 }
 
@@ -85,7 +98,8 @@ limitations under the License.
 }
 
 .radio label,
-.checklist label {
+.checklist label,
+label.mantine-Checkbox-label {
     margin-top: 0.125rem;
     font-weight: 400;
     font-size: 1rem;

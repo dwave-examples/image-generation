@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from enum import EnumMeta
 import json
-from typing import Any, Optional
 
 from dash import dcc, html
 from dwave.cloud import Client
@@ -84,7 +83,7 @@ def slider(label: str, id: str | dict, config: dict) -> html.Div:
     Args:
         label: The title that goes above the slider.
         id: A unique selector for this element.
-        config: A dictionary of slider configurations, see dcc.Slider Dash docs.
+        config: A dictionary of slider configurations, see dmc.Slider Dash Mantine docs.
     """
     return html.Div(
         className="slider-wrapper",
@@ -106,18 +105,19 @@ def slider(label: str, id: str | dict, config: dict) -> html.Div:
     )
 
 
-def dropdown(label: str, id: str, options: list, value: Optional[Any] = None) -> html.Div:
+def dropdown(label: str, id: str, options: list, value: str | int | None = None) -> html.Div:
     """Dropdown element for option selection.
 
     Args:
         label: The title that goes above the dropdown.
         id: A unique selector for this element.
         options: A list of dictionaries of labels and values.
+        value: The default selected value.
     """
     return html.Div(
         className="dropdown-wrapper",
         children=[
-            html.Label(label, htmlFor=id),
+            html.Label(label, htmlFor=str(id)),
             dmc.Select(
                 id=id,
                 data=options,
@@ -157,18 +157,74 @@ def checklist(label: str, id: str, options: list, values: list, inline: bool = T
     )
 
 
-def generate_options(options: list | EnumMeta) -> list[dict]:
-    """Generates options for dropdowns, checklists, radios, etc."""
-    if isinstance(options, EnumMeta):
-        return [
-            {"label": option.label, "value": f"{option.value}"} for option in options
-        ]
+def checkbox(label: str, id: str, checked: bool) -> html.Div:
+    """Checkbox element.
 
-    return [{"label": option, "value": f"{option}"} for option in options]
+    Args:
+        label: The title that goes above the checkbox.
+        id: A unique selector for this element.
+        checked: Whether the checkbox is checked or not.
+    """
+    return html.Div(
+        className="checkbox-wrapper",
+        children=[
+            dmc.Checkbox(
+                id=id,
+                label=label,
+                checked=checked,
+                color=THEME_COLOR,
+            )
+        ],
+    )
+
+
+def input(label: str, id: str, configs: dict, type: str="number") -> html.Div:
+    """Input element for either text or number input.
+
+    Args:
+        label: The title that goes above the input.
+        id: A unique selector for this element.
+        configs: A dictionary of configurations for the input element.
+        type: The type of input, either "number" or "text".
+    """
+    return html.Div(
+        className="input-wrapper",
+        children=[
+            html.Label(label, htmlFor=id),
+            dmc.TextInput(
+                id=id,
+                **configs,
+            ) if type == "text" else dmc.NumberInput(
+                id=id,
+                **configs,
+            ),
+        ],
+    )
+
+
+def generate_options(options: list | EnumMeta | dict) -> list[dict]:
+    """Format options for dropdowns, checklists, radios, etc.
+
+    Args:
+        options: A list, EnumMeta, or dictionary of options to format.
+
+    Returns:
+        A list of dictionaries with "label" and "value" keys for each option.
+    """
+    if isinstance(options, EnumMeta):
+        return [{"label": option.label, "value": f"{option.value}"} for option in options]
+
+    if isinstance(options, dict):
+        return [{"label": f"{key}", "value": f"{value}"} for key, value in options.items()]
+
+    return [{"label": f"{option}", "value": f"{option}"} for option in options]
 
 
 def generate_model_data(model_data: dict) -> html.Div:
     """Display model data.
+
+    Args:
+        model_data: A dictionary containing the model data to display.
 
     Returns:
         html.Div: A Div containing the model data associated with the selected model.
@@ -197,7 +253,7 @@ def generate_train_tab() -> html.Div:
     """Settings for training the model.
 
     Returns:
-        html.Div: A Div containing the settings for latents and save file name.
+        A Div containing the settings for latents and save file name.
     """
     qpu_options = generate_options(SOLVERS)
 
@@ -223,9 +279,8 @@ def generate_train_tab() -> html.Div:
             html.Label("Save to File Name", htmlFor="file-name"),
             html.Div(
                 [
-                    dcc.Input(
+                    dmc.TextInput(
                         id="file-name",
-                        type="text",
                         required=True,
                     ),
                     html.P(
@@ -244,7 +299,7 @@ def generate_generate_tab() -> html.Div:
     """Settings for generating.
 
     Returns:
-        html.Div: A Div containing the settings for selecting the training file and other settings.
+        A Div containing the settings for selecting the training file and other settings.
     """
 
     return html.Div(
@@ -256,11 +311,10 @@ def generate_generate_tab() -> html.Div:
                 generate_options(["No Models Found (please train and save a model)"]),
             ),
             html.Div(id="model-details"),
-            checklist(
-                "",
+            checkbox(
+                "Tune Parameters",
                 "tune-params",
-                generate_options(["Tune Parameters"]),
-                [],
+                checked=False,
             ),
             html.Div(
                 [
