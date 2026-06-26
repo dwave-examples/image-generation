@@ -21,7 +21,6 @@ import json
 from dash import dcc, html
 from dwave.cloud import Client
 from plotly import graph_objects as go
-import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 
 from demo_configs import (
@@ -31,7 +30,6 @@ from demo_configs import (
     MAIN_HEADER,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
-    THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
 from src.utils.callback_helpers import (
@@ -480,7 +478,7 @@ def generate_graph(type: str) -> list:
     return dcc.Loading(
         parent_className="graph",
         type="circle",
-        color=THEME_COLOR_SECONDARY,
+        color=THEME_COLOR,
         overlay_style={"visibility": "visible"},
         delay_show=100,
         children=[
@@ -512,17 +510,18 @@ def generate_tooltip(title: str, description: str, target: str) -> list:
         A tooltip.
     """
 
-    return dbc.Tooltip(
-        children=html.Div(
+    return dmc.Tooltip(
+        label=html.Div(
             [
                 html.H5(title),
                 html.P(description),
             ],
-            className="dbc-tooltip-content"
         ),
-        className="dbc-tooltip",
-        target=target,
-        delay={"show": 0, "hide": 100},
+        target=f"#{target}",
+        multiline=True, w=300, color="white",
+        # closeDelay=10000000,
+        withArrow=True,
+        arrowSize=16,
     )
 
 

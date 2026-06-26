@@ -29,7 +29,7 @@ from src.model_wrapper import get_dataset
 from plotly import graph_objects as go
 from torchvision.utils import save_image
 
-from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT, THEME_COLOR_SECONDARY
+from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
 from src.utils.common import get_graph_mapping, greedy_get_subgraph
 
 MODEL_PATH = Path("models")
@@ -319,7 +319,7 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int],
     data = []
 
     if show_edges:
-        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.3)
+        edge_trace = get_edge_trace(G, node_coords, "#2A7DE1", 0.3)
         data.append(edge_trace)
 
     node_trace = get_node_trace(G, node_coords, mapping, file_name)
