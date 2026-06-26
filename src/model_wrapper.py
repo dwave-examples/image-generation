@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from dimod.exceptions import BinaryQuadraticModelStructureError
 import plotly.express as px
 import torch
 import yaml
@@ -352,6 +353,34 @@ class ModelWrapper:
 
         return mse_loss
 
+    def _rebuild_sampler(self) -> None:
+        """Reconnect to the QPU and rebuild the sampler after a structure error.
+
+        Used as a Zephyr-only fallback when the cached embedding references qubits
+        or couplers that are no longer available on the QPU.  ``EmbeddingComposite``
+        re-embeds the GRBM's logical graph dynamically onto the current working graph,
+        so the GRBM weights remain valid and no retraining is needed.
+        """
+        from dwave.system import DWaveSampler, EmbeddingComposite
+
+        print(
+            f"Sampler structure error detected; reconnecting to QPU '{self.qpu}' and rebuilding sampler."
+        )
+        qpu_sampler = DWaveSampler(solver=self.qpu)
+        qpu_topology = qpu_sampler.properties["topology"]["type"]
+
+        if qpu_topology != "zephyr":
+            raise RuntimeError(
+                f"Sampler rebuild is only supported for Zephyr QPUs (got '{qpu_topology}')."
+            )
+
+        # EmbeddingComposite finds a valid minor embedding of the GRBM's logical
+        # graph on the current working QPU topology without requiring retraining.
+        self.sampler = EmbeddingComposite(qpu_sampler)
+        self.linear_range = qpu_sampler.properties["h_range"]
+        self.quadratic_range = qpu_sampler.properties["j_range"]
+        print(f"Sampler rebuilt with EmbeddingComposite for Zephyr QPU '{self.qpu}'.")
+
     def generate_output(self, latent_qpu_file: str, sharpen: bool = False, save_to_file: str = "") -> go.Figure:
         """Generate output images from trained model.
 
@@ -366,14 +395,25 @@ class ModelWrapper:
         self._grbm.eval()
 
         with torch.no_grad():
-            samples = self._grbm.sample(
-                self.sampler,
-                prefactor=self.PREFACTOR,
-                device=self._device,
-                linear_range=self.linear_range,
-                quadratic_range=self.quadratic_range,
-                sample_params=self.sampler_kwargs,
-            )
+            try:
+                samples = self._grbm.sample(
+                    self.sampler,
+                    prefactor=self.PREFACTOR,
+                    device=self._device,
+                    linear_range=self.linear_range,
+                    quadratic_range=self.quadratic_range,
+                    sample_params=self.sampler_kwargs,
+                )
+            except BinaryQuadraticModelStructureError:
+                self._rebuild_sampler()
+                samples = self._grbm.sample(
+                    self.sampler,
+                    prefactor=self.PREFACTOR,
+                    device=self._device,
+                    linear_range=self.linear_range,
+                    quadratic_range=self.quadratic_range,
+                    sample_params=self.sampler_kwargs,
+                )
 
         with open(latent_qpu_file, "w") as f:
             json.dump(samples[0].tolist(), f)
