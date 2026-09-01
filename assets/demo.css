@@ -537,6 +537,10 @@ progress::-webkit-progress-bar {
     background: rgba(18, 19, 31, 0.55);
 }
 
+.settings-and-buttons .mantine-Tabs-tab:where(:not([data-active])) span {
+    color: #CECFD0;
+}
+
 .title-section {
     background: none;
 }

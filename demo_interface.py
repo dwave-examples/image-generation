@@ -676,12 +676,14 @@ def create_interface():
                                                             html.Img(
                                                                 src=STEP_1_FILE,
                                                                 id="step-1-input-img",
+                                                                alt="Input image from the MNIST dataset",
                                                             ),
                                                             html.Div([
                                                                 html.Div(className="forward-arrow"),
                                                                 html.Img(
                                                                     src=STEP_2_FILE,
                                                                     id="step-2-encode-img",
+                                                                    alt="Encoding image",
                                                                 ),
                                                             ], className="graph-model-intermediate-step"),
                                                             html.Div(
@@ -705,9 +707,17 @@ def create_interface():
                                                             ),
                                                             html.Div([
                                                                 html.Div(className="forward-arrow"),
-                                                                html.Img(src=STEP_4_FILE, id="step-4-decode-img"),
+                                                                html.Img(
+                                                                    src=STEP_4_FILE,
+                                                                    id="step-4-decode-img",
+                                                                    alt="Decoding image",
+                                                                ),
                                                             ], className="graph-model-intermediate-step"),
-                                                            html.Img(src=STEP_5_FILE_DEFAULT, id="step-5-output-img"),
+                                                            html.Img(
+                                                                src=STEP_5_FILE_DEFAULT,
+                                                                id="step-5-output-img",
+                                                                alt="Recreated output image",
+                                                            ),
                                                         ],
                                                         className="graph-model-wrapper"
                                                     ),
