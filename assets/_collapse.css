@@ -50,7 +50,8 @@ limitations under the License.
     direction: rtl;
 }
 
-.settings-and-buttons {
+.settings-and-buttons,
+.progress-bars {
     direction: ltr;
 }
 

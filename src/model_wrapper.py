@@ -420,19 +420,28 @@ class ModelWrapper:
         fig_mse = go.Figure()
         fig_total = go.Figure()
 
-        fig_mse.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=mse_losses))
-        fig_total.add_trace(go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses))
+        fig_mse.add_trace(
+            go.Scatter(x=list(range(len(mse_losses))), y=mse_losses, line=dict(color="#2A7DE1"))
+        )
+        fig_total.add_trace(
+            go.Scatter(x=list(range(len(mse_losses))), y=dvae_losses, line=dict(color="#2A7DE1"))
+        )
 
-        # Update xaxis properties
-        fig_mse.update_xaxes(title_text="Batch")
-        fig_mse.update_yaxes(title_text="Loss")
+        dark_axis = dict(
+            gridcolor="rgba(255, 255, 255, 0.15)",
+            zerolinecolor="rgba(255, 255, 255, 0.3)",
+            title_font=dict(size=16),
+        )
 
-        # Update yaxis properties
-        fig_total.update_xaxes(title_text="Batch")
-        fig_total.update_yaxes(title_text="Loss")
-
-        fig_mse.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
-        fig_total.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+        for fig in (fig_mse, fig_total):
+            fig.update_xaxes(title_text="<b>Batch</b>", **dark_axis)
+            fig.update_yaxes(title_text="<b>Loss</b>", **dark_axis)
+            fig.update_layout(
+                margin={"t": 0, "l": 0, "b": 0, "r": 0},
+                paper_bgcolor="rgba(0, 0, 0, 0)",
+                plot_bgcolor="rgba(0, 0, 0, 0)",
+                font=dict(color="#f5f7fb"),
+            )
 
         if save_to_file_mse:
             with open(save_to_file_mse, "w") as f:

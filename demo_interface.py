@@ -772,7 +772,7 @@ def create_interface():
                                                         children=[
                                                             html.Div(
                                                                 [
-                                                                    html.H4("Generated"),
+                                                                    html.H3("Generated"),
                                                                     html.Div(
                                                                         dcc.Graph(
                                                                             id="fig-output",
@@ -787,7 +787,7 @@ def create_interface():
                                                             ),
                                                             html.Div(
                                                                 [
-                                                                    html.H4(
+                                                                    html.H3(
                                                                         "Reconstructed Comparison"
                                                                     ),
                                                                     html.Div(
@@ -810,7 +810,7 @@ def create_interface():
                                         ],
                                     ),
                                     dmc.TabsPanel(
-                                        value="results-tab",
+                                        value="loss-tab",
                                         tabIndex="13",
                                         children=[
                                             html.Div(
@@ -819,7 +819,7 @@ def create_interface():
                                                     html.Div(
                                                         className="graph-wrapper",
                                                         children=[
-                                                            html.H4(
+                                                            html.H3(
                                                                 "Mean Squared Error Loss (MSE)"
                                                             ),
                                                             html.Div(
@@ -832,7 +832,7 @@ def create_interface():
                                                                 ),
                                                                 className="graph",
                                                             ),
-                                                            html.H4("Total Loss (MSE + MMD)"),
+                                                            html.H3("Total Loss (MSE + MMD)"),
                                                             html.Div(
                                                                 dcc.Graph(
                                                                     id="fig-total-loss",
