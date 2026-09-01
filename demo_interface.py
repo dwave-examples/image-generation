@@ -349,7 +349,7 @@ def generate_progress_bar(index: int) -> html.Div:
             ),
         ],
         id={"type": "progress-wrapper", "index": index},
-        className="visibility-hidden",
+        className="display-none",
     )
 
 
@@ -359,39 +359,39 @@ def generate_settings_form() -> dcc.Tabs:
     Returns:
         dcc.Tabs: Tabs containing settings for training and generation.
     """
-    return dcc.Tabs(
+    return dmc.Tabs(
         id="setting-tabs",
         value="generate-tab",
-        mobile_breakpoint=0,
+        color="white",
         children=[
-            dcc.Tab(
-                label="Train",
-                id="train-tab",
-                className="tab",
+            html.Header(
+                className="banner",
                 children=[
-                    generate_train_tab(),
-                    html.Div(
+                    dmc.TabsList(
                         [
-                            generate_run_buttons("Train", "Cancel Training"),
-                            generate_progress_bar(0),
+                            dmc.TabsTab("Train", value="train-tab", id="train-tab"),
+                            dmc.TabsTab(
+                                "Generate",
+                                value="generate-tab",
+                                id="generate-tab",
+                            ),
                         ]
                     ),
                 ],
             ),
-            dcc.Tab(
-                label="Generate",
-                id="generate-tab",
+            dmc.TabsPanel(
+                value="train-tab",
+                children=[
+                    generate_train_tab(),
+                    generate_run_buttons("Train", "Cancel Training"),
+                ]
+            ),
+            dmc.TabsPanel(
                 value="generate-tab",
-                className="tab",
                 children=[
                     generate_generate_tab(),
-                    html.Div(
-                        [
-                            generate_run_buttons("Generate", "Cancel Generation"),
-                            generate_progress_bar(1),
-                        ]
-                    ),
-                ],
+                    generate_run_buttons("Generate", "Cancel Generation"),
+                ]
             ),
         ],
     )
@@ -587,12 +587,21 @@ def create_interface():
                                             html.Div(
                                                 [
                                                     html.Div(
-                                                        html.Div(
-                                                            [
-                                                                generate_settings_form(),
-                                                            ],
-                                                            className="settings-and-buttons",
-                                                        ),
+                                                        [
+                                                            html.Div(
+                                                                [
+                                                                    generate_settings_form(),
+                                                                ],
+                                                                className="settings-and-buttons",
+                                                            ),
+                                                            html.Div(
+                                                                [
+                                                                    generate_progress_bar(0),
+                                                                    generate_progress_bar(1),
+                                                                ],
+                                                                className="progress-bars",
+                                                            ),
+                                                        ],
                                                         className="settings-and-buttons-wrapper",
                                                     ),
                                                     # Left column collapse button

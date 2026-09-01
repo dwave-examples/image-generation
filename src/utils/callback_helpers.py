@@ -39,7 +39,7 @@ IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
 
-MODEL_DIAGRAM_PATH = "assets/model_diagram/"
+MODEL_DIAGRAM_PATH = "static/model_diagram/"
 LATENT_ENCODED_FILE = MODEL_DIAGRAM_PATH + "latent_encoded.json"
 LATENT_QPU_FILE = MODEL_DIAGRAM_PATH + "latent_qpu.json"
 STEP_1_FILE = MODEL_DIAGRAM_PATH + "step_1_input.png"

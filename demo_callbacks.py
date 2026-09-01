@@ -408,7 +408,7 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
         progress-wrapper-className: The classname of the second progress wrapper.
     """
 
-    return "visibility-hidden", "visibility-hidden"
+    return "display-none", "display-none"
 
 
 @dash.callback(
@@ -661,7 +661,7 @@ def train(
         fig_mse_loss,
         fig_dvae_loss,
         file_name,
-        "visibility-hidden",
+        "display-none",
     )
 
 
@@ -673,7 +673,7 @@ class GenerateReturn(NamedTuple):
     fig_mse_loss: go.Figure = dash.no_update
     fig_total_loss: go.Figure = dash.no_update
     popup_classname: str = "display-none"
-    progress_wrapper_classname: str = "visibility-hidden"
+    progress_wrapper_classname: str = "display-none"
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
     problem_details_table: list = dash.no_update

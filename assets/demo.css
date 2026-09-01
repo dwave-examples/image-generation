@@ -83,12 +83,36 @@ div.left-column .tab {
     margin-top: 0;
 }
 
-#setting-tabs-parent .tab-content {
+#setting-tabs-panel-generate-tab .settings {
+    margin-bottom: 3rem;
+}
+
+#setting-tabs .banner {
+    background: none;
+    height: 4rem;
+    margin-bottom: 1.5rem;
     padding: 0;
 }
 
-.button-group {
-    margin-bottom: 1.25rem;
+#setting-tabs .banner .mantine-Tabs-list {
+    --tabs-list-gap: 0;
+    width: 100%;
+}
+
+#setting-tabs .banner .mantine-Tabs-tab {
+    font-size: 1.25rem;
+    flex-basis: 50%;
+}
+
+.progress-bars {
+    margin: 1.25rem auto 0;
+    max-width: 22rem;
+}
+
+.progress-bars p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--grey-lighter);
 }
 
 .graph-wrapper-flex {
@@ -165,7 +189,7 @@ progress::-webkit-progress-bar {
 .model-details p {
     margin-top: 0.25rem;
     margin-bottom: 0;
-    font-size: 0.875rem;
+    font-size: 1rem;
     color: var(--grey-lighter);
 }
 
@@ -498,7 +522,19 @@ progress::-webkit-progress-bar {
     transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: calc(2.5 * 8px);
-    padding: 5px 26px 26px;
+    overflow: hidden;
+}
+
+.settings-and-buttons .mantine-Tabs-panel {
+    padding: 0 1.625rem 1.625rem;
+}
+
+.settings-and-buttons .mantine-Tabs-tab {
+    border-top-width: 0;
+}
+
+.settings-and-buttons .mantine-Tabs-tab:where([data-active]) {
+    background: rgba(18, 19, 31, 0.55);
 }
 
 .title-section {
