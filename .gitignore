@@ -4,3 +4,4 @@ cache
 data/MNIST/
 generated_json/*
 static/model_diagram/*
+!static/model_diagram/step_5_output_default.png

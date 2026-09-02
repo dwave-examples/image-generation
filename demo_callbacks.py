@@ -148,11 +148,16 @@ def update_model_diagram_imgs(
     fig_qpu = go.Figure(fig_qpu)
     fig_encoded = go.Figure(fig_encoded)
 
-    with open(LATENT_QPU_FILE, "r") as f:
-        latent_qpu = json.load(f)
+    try:
+        with open(LATENT_QPU_FILE, "r") as f:
+            latent_qpu = json.load(f)
 
-    with open(LATENT_ENCODED_FILE, "r") as f:
-        latent_encoded = json.load(f)
+        with open(LATENT_ENCODED_FILE, "r") as f:
+            latent_encoded = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # The latent files are written during the run (latent_qpu.json only at the end of each
+        # epoch), so they may be missing or half-written on early progress ticks.
+        raise PreventUpdate
 
     color_mapping_qpu = [GRAPH_COLORS[int(latent_qpu[i] > 0)] for i in latent_mapping]
     color_mapping_encoded = [GRAPH_COLORS[int(latent_encoded[i] > 0)] for i in latent_mapping]
