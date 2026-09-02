@@ -344,7 +344,7 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
 
     if not len(models):
         models = ["No Models Found (please train and save a model)"]
-    
+
     return (
         generate_options(models),
         last_trained_model if last_trained_model else models[0],

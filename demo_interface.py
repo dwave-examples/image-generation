@@ -119,7 +119,7 @@ def dropdown(label: str, id: str, options: list, value: str | int | None = None)
             dmc.Select(
                 id=id,
                 data=options,
-                value=value if value else options[0]["value"],
+                value=value if value is not None else options[0]["value"],
                 allowDeselect=False,
             ),
         ],
@@ -519,7 +519,6 @@ def generate_tooltip(title: str, description: str, target: str) -> list:
         ),
         target=f"#{target}",
         multiline=True, w=300, color="white",
-        # closeDelay=10000000,
         withArrow=True,
         arrowSize=16,
     )
