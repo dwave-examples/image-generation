@@ -19,17 +19,17 @@ import random
 import time
 from pathlib import Path
 from typing import Optional
-import torch
 
-import networkx as nx
 import dwave.graphs as dwave_graphs
-from dwave.system import DWaveSampler
+import networkx as nx
+import torch
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
-from src.model_wrapper import get_dataset
+from dwave.system import DWaveSampler
 from plotly import graph_objects as go
 from torchvision.utils import save_image
 
 from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
+from src.model_wrapper import get_dataset
 from src.utils.common import get_graph_mapping, greedy_get_subgraph
 
 MODEL_PATH = Path("models")
@@ -66,6 +66,7 @@ def get_example_image(index: int = 0) -> torch.Tensor:
     save_image(example_image, STEP_1_FILE)
 
     return example_image
+
 
 def create_model_files(
     model: DiscreteVariationalAutoencoder,
@@ -125,17 +126,9 @@ def generate_model_diagram(model: DiscreteVariationalAutoencoder, example_image:
         json.dump(discretes[0, 0].tolist(), f)
 
     step_4 = model._dvae.decoder.merge_batch_dim_and_replica_dim(
-        model._dvae.decoder.make_2x2_images(
-            model._dvae.decoder.increase_latent_dim(discretes)
-        )
+        model._dvae.decoder.make_2x2_images(model._dvae.decoder.increase_latent_dim(discretes))
     )
-    save_image(
-        step_4[0].unsqueeze(1),
-        STEP_4_FILE,
-        normalize=True,
-        scale_each=True,
-        padding=1
-    )
+    save_image(step_4[0].unsqueeze(1), STEP_4_FILE, normalize=True, scale_each=True, padding=1)
 
     step_5 = model._dvae.decoder(discretes)
     save_image(step_5[0], STEP_5_FILE)
@@ -279,7 +272,7 @@ def get_node_trace(
     except Exception:  # Expected when QPU or latents setting is updated
         print(
             "Accurate latent color mapping not available for the requested graph nodes.",
-            "Generating random data."
+            "Generating random data.",
         )
         random.seed(10)
         rand_nodes = [random.randint(0, 1) for _ in G.nodes()]
@@ -303,7 +296,13 @@ def get_node_trace(
     return node_trace
 
 
-def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int], file_name: str, show_edges: bool=True) -> go.Figure:
+def get_fig(
+    G: nx.Graph,
+    node_coords: dict[int, tuple],
+    mapping: dict[int, int],
+    file_name: str,
+    show_edges: bool = True,
+) -> go.Figure:
     """Generate a Plotly fig of a graph with highlighted subgraph.
 
     Args:

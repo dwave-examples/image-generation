@@ -21,11 +21,11 @@ import random
 import re
 from pathlib import Path
 from typing import NamedTuple
-import torch
 
 import dash
 import plotly.io as pio
-from dash import ALL, ctx, MATCH
+import torch
+from dash import ALL, MATCH, ctx
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
@@ -36,7 +36,7 @@ from demo_interface import (
     generate_latent_vector,
     generate_model_data,
     generate_options,
-    generate_problem_details_table
+    generate_problem_details_table,
 )
 from src.model_wrapper import ModelWrapper
 from src.utils.callback_helpers import (
@@ -190,6 +190,7 @@ class CheckQpuAndUpdateModelReturn(NamedTuple):
     step_5_img: str = dash.no_update
     has_loaded_diagram: bool = True
 
+
 @dash.callback(
     Output("popup", "className"),
     Output("generate-button", "disabled"),
@@ -209,7 +210,7 @@ class CheckQpuAndUpdateModelReturn(NamedTuple):
         Input("setting-tabs", "value"),
         State("example-image", "data"),
         State("has-loaded-diagram", "data"),
-    ]
+    ],
 )
 def check_qpu_and_update_model(
     model_file_name: str,
@@ -244,7 +245,9 @@ def check_qpu_and_update_model(
             step_5_img: The file path for the output image.
             has_loaded_diagram: Keeps track of whether this is a page load.
     """
-    switched_to_generate_tab = ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
+    switched_to_generate_tab = (
+        ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
+    )
 
     # If first load, or a new model is chosen, or the settings tab is changed to "generate"
     if not ctx.triggered_id or ctx.triggered_id == "model-file-name" or switched_to_generate_tab:
@@ -286,7 +289,11 @@ def check_qpu_and_update_model(
             latent_mapping=latent_mapping,
             step_2_img=f"{STEP_2_FILE}?force_refresh={force_refresh}",
             step_4_img=f"{STEP_4_FILE}?force_refresh={force_refresh}",
-            step_5_img=f"{STEP_5_FILE}?force_refresh={force_refresh}" if has_loaded_diagram else dash.no_update,
+            step_5_img=(
+                f"{STEP_5_FILE}?force_refresh={force_refresh}"
+                if has_loaded_diagram
+                else dash.no_update
+            ),
             has_loaded_diagram=False if not ctx.triggered_id else True,
         )
 
@@ -770,7 +777,13 @@ def generate(
 
         model.train_init(n_epochs)
         fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
-            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data, example_image=example_image
+            set_progress,
+            model,
+            n_epochs,
+            model_data["qpu"],
+            model_data["n_latents"],
+            loss_data,
+            example_image=example_image,
         )
 
         model_file_name += f"_tuned_{n_epochs}_epochs"

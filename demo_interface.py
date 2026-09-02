@@ -13,15 +13,16 @@
 # limitations under the License.
 
 """This file stores the Dash HTML layout for the app."""
+
 from __future__ import annotations
 
-from enum import EnumMeta
 import json
+from enum import EnumMeta
 
+import dash_mantine_components as dmc
 from dash import dcc, html
 from dwave.cloud import Client
 from plotly import graph_objects as go
-import dash_mantine_components as dmc
 
 from demo_configs import (
     DEFAULT_QPU,
@@ -33,12 +34,12 @@ from demo_configs import (
     THUMBNAIL,
 )
 from src.utils.callback_helpers import (
-    get_example_image,
     LATENT_ENCODED_FILE,
     STEP_1_FILE,
     STEP_2_FILE,
     STEP_4_FILE,
-    STEP_5_FILE_DEFAULT
+    STEP_5_FILE_DEFAULT,
+    get_example_image,
 )
 
 # Initialize available QPUs
@@ -65,9 +66,7 @@ except Exception:
     LATENT_DIAGRAM_END = 1
 
 # An empty black fig to show when loading
-DEFAULT_FIG = go.Figure(
-    layout=go.Layout(paper_bgcolor="black", plot_bgcolor="black")
-)
+DEFAULT_FIG = go.Figure(layout=go.Layout(paper_bgcolor="black", plot_bgcolor="black"))
 DEFAULT_FIG.update_xaxes(showgrid=False, zeroline=False)
 DEFAULT_FIG.update_yaxes(showgrid=False, zeroline=False)
 
@@ -146,7 +145,9 @@ def checklist(label: str, id: str, options: list, values: list, inline: bool = T
                 value=values,
                 children=dmc.Group(
                     [
-                        dmc.Checkbox(label=option["label"], value=option["value"], color=THEME_COLOR)
+                        dmc.Checkbox(
+                            label=option["label"], value=option["value"], color=THEME_COLOR
+                        )
                         for option in options
                     ],
                 ),
@@ -176,7 +177,7 @@ def checkbox(label: str, id: str, checked: bool) -> html.Div:
     )
 
 
-def input(label: str, id: str, configs: dict, type: str="number") -> html.Div:
+def input(label: str, id: str, configs: dict, type: str = "number") -> html.Div:
     """Input element for either text or number input.
 
     Args:
@@ -189,12 +190,16 @@ def input(label: str, id: str, configs: dict, type: str="number") -> html.Div:
         className="input-wrapper",
         children=[
             html.Label(label, htmlFor=id),
-            dmc.TextInput(
-                id=id,
-                **configs,
-            ) if type == "text" else dmc.NumberInput(
-                id=id,
-                **configs,
+            (
+                dmc.TextInput(
+                    id=id,
+                    **configs,
+                )
+                if type == "text"
+                else dmc.NumberInput(
+                    id=id,
+                    **configs,
+                )
             ),
         ],
     )
@@ -384,14 +389,14 @@ def generate_settings_form() -> dcc.Tabs:
                 children=[
                     generate_train_tab(),
                     generate_run_buttons("Train", "Cancel Training"),
-                ]
+                ],
             ),
             dmc.TabsPanel(
                 value="generate-tab",
                 children=[
                     generate_generate_tab(),
                     generate_run_buttons("Generate", "Cancel Generation"),
-                ]
+                ],
             ),
         ],
     )
@@ -437,8 +442,7 @@ def generate_problem_details_table(details: dict) -> html.Table:
 
 
 def generate_latent_vector(
-    latent_start: list[int]=LATENT_DIAGRAM_START,
-    latent_end: int=LATENT_DIAGRAM_END
+    latent_start: list[int] = LATENT_DIAGRAM_START, latent_end: int = LATENT_DIAGRAM_END
 ) -> list:
     """Generate the visual +/- ones vector
 
@@ -450,18 +454,13 @@ def generate_latent_vector(
         A list containing the visuals for the first few +/- ones and the last +/- one.
     """
     latent_start_html = [
-        html.Div(
-            one, className=f"latent-{'plus' if one > 0 else 'minus'}"
-        ) for one in latent_start
+        html.Div(one, className=f"latent-{'plus' if one > 0 else 'minus'}") for one in latent_start
     ]
 
     return [
         *latent_start_html,
         html.Div("..."),
-        html.Div(
-            latent_end,
-            className=f"latent-{'plus' if latent_end > 0 else 'minus'}"
-        ),
+        html.Div(latent_end, className=f"latent-{'plus' if latent_end > 0 else 'minus'}"),
     ]
 
 
@@ -494,7 +493,7 @@ def generate_graph(type: str) -> list:
                 className="graph",
                 id=f"{type}-graph-wrapper",
             ),
-        ]
+        ],
     )
 
 
@@ -518,7 +517,9 @@ def generate_tooltip(title: str, description: str, target: str) -> list:
             ],
         ),
         target=f"#{target}",
-        multiline=True, w=300, color="white",
+        multiline=True,
+        w=300,
+        color="white",
         withArrow=True,
         arrowSize=16,
     )
@@ -529,7 +530,7 @@ def create_interface():
     return html.Div(
         id="app-container",
         children=[
-             html.A(  # Skip link for accessibility
+            html.A(  # Skip link for accessibility
                 "Skip to main content",
                 href="#main-content",
                 id="skip-to-main",
@@ -677,48 +678,86 @@ def create_interface():
                                                                 id="step-1-input-img",
                                                                 alt="Input image from the MNIST dataset",
                                                             ),
-                                                            html.Div([
-                                                                html.Div(className="forward-arrow"),
-                                                                html.Img(
-                                                                    src=STEP_2_FILE,
-                                                                    id="step-2-encode-img",
-                                                                    alt="Encoding image",
-                                                                ),
-                                                            ], className="graph-model-intermediate-step"),
+                                                            html.Div(
+                                                                [
+                                                                    html.Div(
+                                                                        className="forward-arrow"
+                                                                    ),
+                                                                    html.Img(
+                                                                        src=STEP_2_FILE,
+                                                                        id="step-2-encode-img",
+                                                                        alt="Encoding image",
+                                                                    ),
+                                                                ],
+                                                                className="graph-model-intermediate-step",
+                                                            ),
                                                             html.Div(
                                                                 [
                                                                     generate_graph("qpu"),
                                                                     generate_graph("encoded"),
-                                                                    html.Div([
-                                                                        html.Div(id="arrow-left-pointer-events"),  # Only here to act as the pointer event for the hover
-                                                                        html.Div(id="arrow-right-pointer-events"),  # Only here to act as the pointer event for the hover
-                                                                        html.Div(className="arrow-left", id="arrow-left"),
-                                                                        html.Div(className="arrow-right", id="arrow-right"),
-                                                                    ], className="latent-loss-arrows"),
-                                                                    html.Div([
-                                                                        html.Div(generate_latent_vector(), id="latent-space-vector"),
-                                                                        html.Div([html.Div(), html.Div()], className="curly-brace"),
-                                                                        html.Div("256", id="latent-diagram-size")
-
-                                                                    ], className="latent-vector-diagram", id="latent-vector-diagram"),
+                                                                    html.Div(
+                                                                        [
+                                                                            html.Div(
+                                                                                id="arrow-left-pointer-events"
+                                                                            ),  # Only here to act as the pointer event for the hover
+                                                                            html.Div(
+                                                                                id="arrow-right-pointer-events"
+                                                                            ),  # Only here to act as the pointer event for the hover
+                                                                            html.Div(
+                                                                                className="arrow-left",
+                                                                                id="arrow-left",
+                                                                            ),
+                                                                            html.Div(
+                                                                                className="arrow-right",
+                                                                                id="arrow-right",
+                                                                            ),
+                                                                        ],
+                                                                        className="latent-loss-arrows",
+                                                                    ),
+                                                                    html.Div(
+                                                                        [
+                                                                            html.Div(
+                                                                                generate_latent_vector(),
+                                                                                id="latent-space-vector",
+                                                                            ),
+                                                                            html.Div(
+                                                                                [
+                                                                                    html.Div(),
+                                                                                    html.Div(),
+                                                                                ],
+                                                                                className="curly-brace",
+                                                                            ),
+                                                                            html.Div(
+                                                                                "256",
+                                                                                id="latent-diagram-size",
+                                                                            ),
+                                                                        ],
+                                                                        className="latent-vector-diagram",
+                                                                        id="latent-vector-diagram",
+                                                                    ),
                                                                 ],
                                                                 className="latent-space-graph-wrapper",
                                                             ),
-                                                            html.Div([
-                                                                html.Div(className="forward-arrow"),
-                                                                html.Img(
-                                                                    src=STEP_4_FILE,
-                                                                    id="step-4-decode-img",
-                                                                    alt="Decoding image",
-                                                                ),
-                                                            ], className="graph-model-intermediate-step"),
+                                                            html.Div(
+                                                                [
+                                                                    html.Div(
+                                                                        className="forward-arrow"
+                                                                    ),
+                                                                    html.Img(
+                                                                        src=STEP_4_FILE,
+                                                                        id="step-4-decode-img",
+                                                                        alt="Decoding image",
+                                                                    ),
+                                                                ],
+                                                                className="graph-model-intermediate-step",
+                                                            ),
                                                             html.Img(
                                                                 src=STEP_5_FILE_DEFAULT,
                                                                 id="step-5-output-img",
                                                                 alt="Recreated output image",
                                                             ),
                                                         ],
-                                                        className="graph-model-wrapper"
+                                                        className="graph-model-wrapper",
                                                     ),
                                                     generate_tooltip(
                                                         "Input Image",
