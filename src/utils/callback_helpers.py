@@ -22,7 +22,7 @@ from typing import Optional
 import torch
 
 import networkx as nx
-import dwave_networkx as dnx
+import dwave.graphs as dwave_graphs
 from dwave.system import DWaveSampler
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from src.model_wrapper import get_dataset
@@ -367,11 +367,13 @@ def generate_model_fig(
     qpu_topology = qpu.properties["topology"]["type"]
 
     if qpu_topology == "pegasus":
-        node_coords = dnx.drawing.pegasus_layout(dnx.pegasus_graph(qpu_shape), crosses=True)
+        node_coords = dwave_graphs.drawing.pegasus_layout(
+            dwave_graphs.pegasus_graph(qpu_shape), crosses=True
+        )
     elif qpu_topology == "zephyr":
-        node_coords = dnx.drawing.zephyr_layout(dnx.zephyr_graph(qpu_shape))
+        node_coords = dwave_graphs.drawing.zephyr_layout(dwave_graphs.zephyr_graph(qpu_shape))
     elif qpu_topology == "chimera":
-        node_coords = dnx.drawing.chimera_layout(dnx.chimera_graph(qpu_shape))
+        node_coords = dwave_graphs.drawing.chimera_layout(dwave_graphs.chimera_graph(qpu_shape))
     else:
         raise ValueError(f"Unknown QPU topology: {qpu_topology}")
 
