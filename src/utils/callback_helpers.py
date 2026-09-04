@@ -20,9 +20,9 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import dwave.graphs as dwave_graphs
 import networkx as nx
 import torch
+from dwave.graphs import drawing, chimera_graph, pegasus_graph, zephyr_graph
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
 from dwave.system import DWaveSampler
 from plotly import graph_objects as go
@@ -366,13 +366,13 @@ def generate_model_fig(
     qpu_topology = qpu.properties["topology"]["type"]
 
     if qpu_topology == "pegasus":
-        node_coords = dwave_graphs.drawing.pegasus_layout(
-            dwave_graphs.pegasus_graph(qpu_shape), crosses=True
+        node_coords = drawing.pegasus_layout(
+            pegasus_graph(qpu_shape), crosses=True
         )
     elif qpu_topology == "zephyr":
-        node_coords = dwave_graphs.drawing.zephyr_layout(dwave_graphs.zephyr_graph(qpu_shape))
+        node_coords = drawing.zephyr_layout(zephyr_graph(qpu_shape))
     elif qpu_topology == "chimera":
-        node_coords = dwave_graphs.drawing.chimera_layout(dwave_graphs.chimera_graph(qpu_shape))
+        node_coords = drawing.chimera_layout(chimera_graph(qpu_shape))
     else:
         raise ValueError(f"Unknown QPU topology: {qpu_topology}")
 
