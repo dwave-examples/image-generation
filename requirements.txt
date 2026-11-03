@@ -1,6 +1,6 @@
-dash[diskcache]~=3.2
-dash-bootstrap-components~=2.0
-dwave-ocean-sdk~=9.0
+dash[diskcache]~=4.3
+dash-mantine-components~=2.5
+dwave-ocean-sdk~=9.4
 dwave-pytorch-plugin~=0.3
 einops~=0.8
 matplotlib~=3.10
