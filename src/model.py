@@ -22,7 +22,7 @@ from pathlib import Path
 import dimod
 import torch
 
-from src.decoder import DecoderConfig, FFHQDecoder
+from src.ffhq_decoder import DecoderConfig, FFHQDecoder
 
 MODEL_FORMAT = "ffhq_demo_inference_v1"
 

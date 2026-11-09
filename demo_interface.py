@@ -1,4 +1,4 @@
-# Copyright 2026 D-Wave
+# Copyright 2024 D-Wave
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,64 +12,757 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""An inference-only interface with a QPU selector and four generated faces."""
+"""This file stores the Dash HTML layout for the app."""
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any, Optional
 
 from dash import dcc, html
+from plotly import graph_objects as go
+import dash_bootstrap_components as dbc
 
-from demo_configs import APP_TITLE, CANDIDATE_COUNT, DESCRIPTION
+from demo_configs import (
+    DEFAULT_QPU,
+    DESCRIPTION,
+    FFHQ_MODEL_NAME,
+    MAIN_HEADER,
+    SLIDER_EPOCHS,
+    SLIDER_LATENTS,
+    THEME_COLOR_SECONDARY,
+    THUMBNAIL,
+)
+from src.generation import get_engine
+from src.utils.callback_helpers import (
+    LATENT_ENCODED_FILE,
+    STEP_1_FILE,
+    STEP_2_FILE,
+    STEP_4_FILE,
+    STEP_5_FILE_DEFAULT
+)
+
+# Only offer QPUs with surviving precomputed FFHQ embeddings.
+try:
+    INFERENCE_QPUS, unavailable = get_engine().available_solvers()
+    INFERENCE_STATUS = " ".join(unavailable)
+except Exception:
+    logging.getLogger(__name__).exception("Could not initialize FFHQ inference or query QPUs.")
+    INFERENCE_QPUS = []
+    INFERENCE_STATUS = "Could not initialize FFHQ inference or query QPUs. See the server log."
+SOLVERS = [option["value"] for option in INFERENCE_QPUS] or ["No Leap Access"]
+
+# Initialize the latent diagram with either the available file or random +/- 1s
+try:
+    with open(LATENT_ENCODED_FILE, "r") as f:
+        latent_qpu = json.load(f)
+
+    LATENT_DIAGRAM_START = latent_qpu[:5]
+    LATENT_DIAGRAM_END = latent_qpu[-1]
+
+except Exception:
+    LATENT_DIAGRAM_START = [1, -1, -1, 1, -1]
+    LATENT_DIAGRAM_END = 1
+
+# An empty black fig to show when loading
+DEFAULT_FIG = go.Figure(
+    layout=go.Layout(paper_bgcolor="black", plot_bgcolor="black")
+)
+DEFAULT_FIG.update_xaxes(showgrid=False, zeroline=False)
+DEFAULT_FIG.update_yaxes(showgrid=False, zeroline=False)
 
 
-def create_interface() -> html.Main:
-    return html.Main(
-        className="ffhq-demo",
+def slider(label: str, id: str, config: dict) -> html.Div:
+    """Slider element for value selection.
+
+    Args:
+        label: The title that goes above the slider.
+        id: A unique selector for this element.
+        config: A dictionary of slider configerations, see dcc.Slider Dash docs.
+    """
+    return html.Div(
+        className="slider-wrapper",
         children=[
-            html.Header(
+            html.Label(label),
+            dcc.Slider(
+                id=id,
+                className="slider",
+                **config,
+                marks={
+                    config["min"]: str(config["min"]),
+                    config["max"]: str(config["max"]),
+                },
+                tooltip={
+                    "placement": "bottom",
+                    "always_visible": True,
+                },
+            ),
+        ],
+    )
+
+
+def dropdown(label: str, id: str, options: list, value: Optional[Any] = None) -> html.Div:
+    """Dropdown element for option selection.
+
+    Args:
+        label: The title that goes above the dropdown.
+        id: A unique selector for this element.
+        options: A list of dictionaries of labels and values.
+        value: Optional default value.
+    """
+    return html.Div(
+        className="dropdown-wrapper",
+        children=[
+            html.Label(label),
+            dcc.Dropdown(
+                id=id,
+                options=options,
+                value=value if value else options[0]["value"],
+                clearable=False,
+                searchable=False,
+            ),
+        ],
+    )
+
+
+def checklist(label: str, id: str, options: list, values: list, inline: bool = True) -> html.Div:
+    """Checklist element for option selection.
+
+    Args:
+        label: The title that goes above the checklist.
+        id: A unique selector for this element.
+        options: A list of dictionaries of labels and values.
+        values: A list of values that should be preselected in the checklist.
+        inline: Whether the options of the checklist are displayed beside or below each other.
+    """
+    return html.Div(
+        className="checklist-wrapper",
+        children=[
+            html.Label(label),
+            dcc.Checklist(
+                id=id,
+                className=f"checklist{' checklist--inline' if inline else ''}",
+                inline=inline,
+                options=options,
+                value=values,
+            ),
+        ],
+    )
+
+
+def radio(label: str, id: str, options: list, value: int, inline: bool = True) -> html.Div:
+    """Radio element for option selection.
+
+    Args:
+        label: The title that goes above the radio.
+        id: A unique selector for this element.
+        options: A list of dictionaries of labels and values.
+        value: The value of the radio that should be preselected.
+        inline: Whether the options are displayed beside or below each other.
+    """
+    return html.Div(
+        className="radio-wrapper",
+        children=[
+            html.Label(label),
+            dcc.RadioItems(
+                id=id,
+                className=f"radio{' radio--inline' if inline else ''}",
+                inline=inline,
+                options=options,
+                value=value,
+            ),
+        ],
+    )
+
+
+def generate_model_data(model_data: dict) -> html.Div:
+    """Display model data.
+
+    Returns:
+        html.Div: A Div containing the model data associated with the selected model.
+    """
+
+    return html.Div(
+        children=[
+            html.Div(
                 [
-                    html.Img(
-                        src="/static/dwave_logo.svg", alt="D-Wave", className="brand"
-                    ),
-                    html.H1(APP_TITLE),
-                    html.P(DESCRIPTION),
+                    html.P([html.B("QPU: "), model_data["qpu"]]),
+                    html.P([html.B("Epochs: "), model_data["n_epochs"]]),
                 ]
             ),
-            html.Section(
-                className="controls",
-                children=[
-                    html.Label("QPU with valid precomputed embeddings", htmlFor="qpu"),
-                    dcc.Dropdown(id="qpu", options=[], value=None, clearable=False),
-                    html.Div(
-                        className="actions",
-                        children=[
-                            html.Button("Refresh QPUs", id="refresh-qpus", n_clicks=0),
-                            html.Button(
-                                "Generate four faces",
-                                id="generate",
-                                n_clicks=0,
-                                disabled=True,
-                            ),
-                        ],
+            html.Div(
+                [
+                    html.P([html.B("Latents: "), model_data["n_latents"]]),
+                    html.P([html.B("Batch Size: "), model_data["batch_size"]]),
+                ]
+            ),
+        ],
+        className="display-flex model-details",
+    )
+
+
+def generate_options(options_list: list) -> list[dict]:
+    """Generates options for dropdowns, checklists, radios, etc."""
+    return [{"label": label, "value": i} for i, label in enumerate(options_list)]
+
+
+def generate_train_tab() -> html.Div:
+    """Settings for training the model.
+
+    Returns:
+        html.Div: A Div containing the settings for latents and save file name.
+    """
+    qpu_options = [{"label": qpu, "value": qpu} for qpu in SOLVERS]
+
+    return html.Div(
+        className="settings",
+        children=[
+            dropdown(
+                "QPU",
+                "qpu-setting",
+                qpu_options,
+                value=DEFAULT_QPU if DEFAULT_QPU in SOLVERS else SOLVERS[0],
+            ),
+            slider(
+                "Latents",
+                "n-latents",
+                SLIDER_LATENTS,
+            ),
+            slider(
+                "Epochs",
+                {"type": "n-epochs", "index": 0},
+                SLIDER_EPOCHS,
+            ),
+            html.Label("Save to File Name"),
+            html.Div(
+                [
+                    dcc.Input(
+                        id="file-name",
+                        type="text",
+                        required=True,
                     ),
                     html.P(
-                        f"Each request samples {CANDIDATE_COUNT} fresh candidates. "
-                        "No model fitting or embedding search is performed."
+                        "Invalid file name characters",
+                        id="file-name-help-text",
+                        className="display-none",
                     ),
-                    dcc.Loading(
-                        html.Div(id="availability", role="status"), type="circle"
+                ],
+                className="display-flex file-name-wrapper",
+            ),
+        ],
+    )
+
+
+def generate_generate_tab() -> html.Div:
+    """Settings for generating.
+
+    Returns:
+        html.Div: A Div containing the settings for selecting the training file and other settings.
+    """
+
+    return html.Div(
+        className="settings",
+        children=[
+            dropdown(
+                "Trained Model",
+                "model-file-name",
+                [{"label": "FFHQ EMA (step 540,000)", "value": FFHQ_MODEL_NAME}],
+            ),
+            dropdown(
+                "QPU",
+                "inference-qpu",
+                INFERENCE_QPUS or [{"label": "No supported QPU available", "value": None}],
+                value=DEFAULT_QPU if DEFAULT_QPU in SOLVERS else None,
+            ),
+            html.P(INFERENCE_STATUS, role="status"),
+            html.Div(id="model-details"),
+            checklist(
+                "",
+                "tune-params",
+                [{"label": "Tune Parameters", "value": 0, "disabled": True}],
+                [],
+            ),
+            html.Div(
+                [
+                    slider(
+                        "Epochs",
+                        {"type": "n-epochs", "index": 1},
+                        SLIDER_EPOCHS,
+                    ),
+                ],
+                id="tune-parameter-settings",
+            ),
+        ],
+    )
+
+
+def generate_progress_bar(index: int) -> html.Div:
+    """Create progress bar.
+
+    Returns:
+        html.Div: A Div containing a progress bar and captions.
+    """
+
+    return html.Div(
+        [
+            html.Progress(value="0", id={"type": "progress", "index": index}),
+            html.Div(
+                [
+                    html.P(
+                        "Epochs Completed:", id={"type": "progress-caption-epoch", "index": index}
+                    ),
+                    html.P("Batch:", id={"type": "progress-caption-batch", "index": index}),
+                ],
+                className="display-flex",
+            ),
+        ],
+        id={"type": "progress-wrapper", "index": index},
+        className="visibility-hidden",
+    )
+
+
+def generate_settings_form() -> dcc.Tabs:
+    """This function generates settings training and generating.
+
+    Returns:
+        dcc.Tabs: Tabs containing settings for training and generation.
+    """
+    return dcc.Tabs(
+        id="setting-tabs",
+        value="generate-tab",
+        mobile_breakpoint=0,
+        children=[
+            dcc.Tab(
+                label="Train",
+                id="train-tab",
+                disabled=True,
+                className="tab",
+                children=[
+                    generate_train_tab(),
+                    html.Div(
+                        [
+                            generate_run_buttons("Train", "Cancel Training"),
+                            generate_progress_bar(0),
+                        ]
                     ),
                 ],
             ),
-            dcc.Loading(
-                type="circle",
-                children=html.Section(
-                    [
-                        html.Div(
-                            id="generation-status",
-                            role="status",
-                            **{"aria-live": "polite"},
-                        ),
-                        html.Div(id="gallery", className="face-grid"),
-                    ]
+            dcc.Tab(
+                label="Generate",
+                id="generate-tab",
+                value="generate-tab",
+                className="tab",
+                children=[
+                    generate_generate_tab(),
+                    html.Div(
+                        [
+                            generate_run_buttons("Generate", "Cancel Generation"),
+                            generate_progress_bar(1),
+                        ]
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def generate_run_buttons(run_text: str, cancel_text: str) -> html.Div:
+    """Run and cancel buttons to run the problem."""
+    return html.Div(
+        className="button-group",
+        children=[
+            html.Button(
+                id=f'{"-".join(run_text.lower().split(" "))}-button',
+                children=run_text,
+                n_clicks=0,
+                disabled=False,
+            ),
+            html.Button(
+                id=f'{"-".join(cancel_text.lower().split(" "))}-button',
+                children=cancel_text,
+                n_clicks=0,
+                className="display-none",
+            ),
+        ],
+    )
+
+
+def generate_problem_details_table(details: dict) -> html.Table:
+    """Generate the problem details table.
+
+    Args:
+        details: A dict containing the details to display in the table with headers as keys
+            and content as values.
+
+    Returns:
+        html.Table: The table containing the problem details.
+    """
+    return html.Table(
+        className="problem-details-table",
+        children=[
+            html.Thead([html.Tr([html.Th(header) for header in details.keys()])]),
+            html.Tbody([html.Tr([html.Td(detail) for detail in details.values()])]),
+        ],
+    )
+
+
+def generate_latent_vector(
+    latent_start: list[int]=LATENT_DIAGRAM_START,
+    latent_end: int=LATENT_DIAGRAM_END
+) -> list:
+    """Generate the visual +/- ones vector
+
+    Args:
+        latent_start: The first few +/- ones to show before the ``...``.
+        latent_end: The last digit of the latent vector.
+
+    Returns:
+        A list containing the visuals for the first few +/- ones and the last +/- one.
+    """
+    latent_start_html = [
+        html.Div(
+            one, className=f"latent-{'plus' if one > 0 else 'minus'}"
+        ) for one in latent_start
+    ]
+
+    return [
+        *latent_start_html,
+        html.Div("..."),
+        html.Div(
+            latent_end,
+            className=f"latent-{'plus' if latent_end > 0 else 'minus'}"
+        ),
+    ]
+
+
+def generate_graph(type: str) -> list:
+    """Generate graph with loading.
+
+    Args:
+        type: Type of graph being displayed.
+
+    Returns:
+        A list the graph wrapped in dcc.Loading.
+    """
+
+    return dcc.Loading(
+        parent_className="graph",
+        type="circle",
+        color=THEME_COLOR_SECONDARY,
+        overlay_style={"visibility": "visible"},
+        delay_show=100,
+        children=[
+            html.Div(
+                dcc.Graph(
+                    id=f"fig-{type}-graph",
+                    responsive=True,
+                    config={
+                        "displayModeBar": False,
+                    },
+                    figure=DEFAULT_FIG,
                 ),
+                className="graph",
+                id=f"{type}-graph-wrapper",
+            ),
+        ]
+    )
+
+
+def generate_tooltip(title: str, description: str, target: str) -> list:
+    """Generate tooltip.
+
+    Args:
+        title: The title for the tooltip.
+        description: The description for the tooltip.
+        target: What id opens the tooltip.
+
+    Returns:
+        A tooltip.
+    """
+
+    return dbc.Tooltip(
+        children=html.Div(
+            [
+                html.H5(title),
+                html.P(description),
+            ],
+            className="dbc-tooltip-content"
+        ),
+        className="dbc-tooltip",
+        target=target,
+        delay={"show": 0, "hide": 100},
+    )
+
+
+def create_interface():
+    """Set the application HTML."""
+    return html.Div(
+        id="app-container",
+        children=[
+            # Below are any temporary storage items, e.g., for sharing data between callbacks.
+            dcc.Store(id="has-loaded-diagram"),
+            dcc.Store(id="last-trained-model"),
+            dcc.Store(id="last-saved-id"),
+            dcc.Store(id="latent-mapping"),
+            dcc.Store(id="example-image"),
+            dcc.Interval(id="epoch-checker", interval=500, disabled=True),
+            # Header brand banner
+            html.Div(
+                id="popup",
+                className="display-none",
+                children=[
+                    html.Div(
+                        [
+                            html.H2("Inaccessible QPU"),
+                            html.P(
+                                "The model selected was trained on a QPU that you do not have access to."
+                            ),
+                            html.P("Please select or train a new model."),
+                            html.P("x", id="popup-toggle"),
+                        ]
+                    )
+                ],
+            ),
+            html.Div(className="banner", children=[html.Img(src=THUMBNAIL)]),
+            # Settings and results columns
+            html.Div(
+                className="columns-main",
+                children=[
+                    # Left column
+                    html.Div(
+                        id={"type": "to-collapse-class", "index": 0},
+                        className="left-column",
+                        children=[
+                            html.Div(
+                                className="left-column-layer-1",  # Fixed width Div to collapse
+                                children=[
+                                    html.Div(
+                                        className="left-column-layer-2",  # Padding and content wrapper
+                                        children=[
+                                            html.Div(
+                                                [
+                                                    html.H1(MAIN_HEADER),
+                                                    html.P(DESCRIPTION),
+                                                ],
+                                                className="header-wrapper",
+                                            ),
+                                            generate_settings_form(),
+                                        ],
+                                    )
+                                ],
+                            ),
+                            # Left column collapse button
+                            html.Div(
+                                html.Button(
+                                    id={"type": "collapse-trigger", "index": 0},
+                                    className="left-column-collapse",
+                                    children=[html.Div(className="collapse-arrow")],
+                                ),
+                            ),
+                        ],
+                    ),
+                    # Right column
+                    html.Div(
+                        className="right-column",
+                        children=[
+                            dcc.Tabs(
+                                id="tabs",
+                                value="input-tab",
+                                mobile_breakpoint=0,
+                                children=[
+                                    dcc.Tab(
+                                        label="Machine Learning Model",
+                                        id="input-tab",
+                                        value="input-tab",  # used for switching tabs programatically
+                                        className="tab",
+                                        children=[
+                                            html.Div(
+                                                [
+                                                    html.Img(
+                                                        src=STEP_1_FILE,
+                                                        id="step-1-input-img",
+                                                    ),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(
+                                                            src=STEP_2_FILE,
+                                                            id="step-2-encode-img",
+                                                        ),
+                                                    ], className="graph-model-itermediate-step"),
+                                                    html.Div(
+                                                        [
+                                                            generate_graph("qpu"),
+                                                            generate_graph("encoded"),
+                                                            html.Div([
+                                                                html.Div(id="arrow-left-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(id="arrow-right-pointer-events"),  # Only here to act as the pointer event for the hover
+                                                                html.Div(className="arrow-left", id="arrow-left"),
+                                                                html.Div(className="arrow-right", id="arrow-right"),
+                                                            ], className="latent-loss-arrows"),
+                                                            html.Div([
+                                                                html.Div(generate_latent_vector(), id="latent-space-vector"),
+                                                                html.Div([html.Div(), html.Div()], className="curly-brace"),
+                                                                html.Div("256", id="latent-diagram-size")
+
+                                                            ], className="latent-vector-diagram", id="latent-vector-diagram"),
+                                                        ],
+                                                        className="latent-space-graph-wrapper",
+                                                    ),
+                                                    html.Div([
+                                                        html.Div(className="forward-arrow"),
+                                                        html.Img(src=STEP_4_FILE, id="step-4-decode-img"),
+                                                    ], className="graph-model-itermediate-step"),
+                                                    html.Img(src=STEP_5_FILE_DEFAULT, id="step-5-output-img"),
+                                                ],
+                                                className="graph-model-wrapper"
+                                            ),
+                                            generate_tooltip(
+                                                "Input Image",
+                                                "An input image from the MNIST dataset.",
+                                                "step-1-input-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Encoding",
+                                                "Each collection of 4 pixels represents a feature of the input image.",
+                                                "step-2-encode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Quantum Computer Sample",
+                                                "The quantum computer is sampled to obtain a new list of +/- 1s. These +/- 1s can be decoded to create a new never before seen image.",
+                                                "qpu-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Mapping of Latent +/- 1s onto the Quantum Computer",
+                                                "Each +/- 1 of the latent representation is mapped to a qubit on the quantum computer. This allows for a comparison between the quantum computer and the latent representation.",
+                                                "encoded-graph-wrapper",
+                                            ),
+                                            generate_tooltip(
+                                                "Negative Log-Likelihood (NLL)",
+                                                "NLL is a function that trains the quantum computer by comparing the quantum computer samples to the encoded images. This helps the quantum computer generate new +/- 1s that more accurately describe the encoded image.",
+                                                "arrow-left-pointer-events",
+                                            ),
+                                            generate_tooltip(
+                                                "Max Mean Discrepancy (MMD)",
+                                                "MMD is a function that trains the encoder to encode data into +/- 1s that more closely match the quantum computer's +/- 1s. NLL and MMD alternate to make the output of the quantum computer and the encoder as similar as possible.",
+                                                "arrow-right-pointer-events",
+                                            ),
+                                            generate_tooltip(
+                                                "Latent Representation",
+                                                "The encoded latent representation of the image. The number of +/- 1s is determined by the size of the latent space that was selected during training.",
+                                                "latent-vector-diagram",
+                                            ),
+                                            generate_tooltip(
+                                                "Decoding",
+                                                "Each collection of 4 pixels represents a feature of the output image.",
+                                                "step-4-decode-img",
+                                            ),
+                                            generate_tooltip(
+                                                "Output Image",
+                                                "The image decoded from the latent +/- 1s. The quality of the image can be impacted by the number of epochs, the size of the latent space, the batch size, and the QPU used.",
+                                                "step-5-output-img",
+                                            ),
+                                        ],
+                                    ),
+                                    dcc.Tab(
+                                        label="Generated Images",
+                                        id="results-tab",
+                                        value="results-tab",
+                                        className="tab",
+                                        disabled=True,
+                                        children=[
+                                            html.Div(
+                                                className="tab-content-results",
+                                                children=[
+                                                    html.Div(
+                                                        className="graph-wrapper-flex",
+                                                        children=[
+                                                            html.Div(
+                                                                [
+                                                                    html.H4("Generated"),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-output",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False,
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                            html.Div(
+                                                                [
+                                                                    html.H4(
+                                                                        "Reconstructed Comparison"
+                                                                    ),
+                                                                    html.Div(
+                                                                        dcc.Graph(
+                                                                            id="fig-reconstructed",
+                                                                            responsive=True,
+                                                                            config={
+                                                                                "displayModeBar": False
+                                                                            },
+                                                                        ),
+                                                                        className="graph",
+                                                                    ),
+                                                                ],
+                                                                style={"display": "none"},
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    html.Div(id="problem-details"),
+                                                ],
+                                            )
+                                        ],
+                                    ),
+                                    dcc.Tab(
+                                        label="Loss Graphs",
+                                        id="loss-tab",
+                                        className="tab",
+                                        disabled=True,
+                                        children=[
+                                            html.Div(
+                                                className="tab-content-results",
+                                                children=[
+                                                    html.Div(
+                                                        className="graph-wrapper",
+                                                        children=[
+                                                            html.H4(
+                                                                "Mean Squared Error Loss (MSE)"
+                                                            ),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-mse-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                            html.H4("Total Loss (MSE + MMD)"),
+                                                            html.Div(
+                                                                dcc.Graph(
+                                                                    id="fig-total-loss",
+                                                                    responsive=True,
+                                                                    config={
+                                                                        "displayModeBar": False
+                                                                    },
+                                                                ),
+                                                                className="graph",
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            )
+                                        ],
+                                    ),
+                                ],
+                            )
+                        ],
+                    ),
+                ],
             ),
         ],
     )

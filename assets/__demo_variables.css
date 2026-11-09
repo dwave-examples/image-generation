@@ -16,7 +16,8 @@ limitations under the License.
 
 /*
 Variable declarations for all CSS files.
-The demo's theme colors are set in demo.css.
+Some additional variables are generated automatically in app.py
+and stored in __generated_theme.css.
 
 Dash reads all css files contained in `/assets/` so no imports are necessary.
 */

@@ -1,3 +1,0 @@
-# Generated model assets are not application code.
-models/ffhq/** linguist-generated=true
-*.pt binary

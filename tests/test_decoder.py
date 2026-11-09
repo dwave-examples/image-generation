@@ -17,7 +17,7 @@ import unittest
 import torch
 
 from demo_configs import MODEL_DIRECTORY
-from src.decoder import DecoderConfig, FFHQDecoder, rms_normalize
+from src.ffhq_decoder import DecoderConfig, FFHQDecoder, rms_normalize
 from src.model import load_model
 
 
