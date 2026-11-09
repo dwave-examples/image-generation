@@ -4,3 +4,4 @@ cache
 assets/__generated_theme.css
 data/MNIST/
 generated_json/*
+.venv/
