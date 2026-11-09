@@ -14,9 +14,13 @@
 import random
 from typing import Callable, Literal, Optional
 
+import dwave_networkx as dnx
 import networkx as nx
 import torch
+from dwave.experimental.embedding_methods import zephyr_quotient_search
 from dwave.system import DWaveSampler, FixedEmbeddingComposite
+from minorminer import find_embedding
+from minorminer.utils.parallel_embeddings import find_sublattice_embeddings
 
 
 def greedy_get_subgraph(
@@ -83,6 +87,112 @@ def greedy_get_subgraph(
 
     return subgraph
 
+
+def _try_zephyr_sublattice_fallback(
+    n_nodes: int,
+    qpu_graph: nx.Graph,
+    random_seed: Optional[int],
+) -> Optional[tuple[nx.Graph, dict]]:
+    """Attempt to find a defect-free Zephyr sublattice embedding as a backup.
+
+    Follows the approach demonstrated in
+    https://github.com/dwavesystems/dwave-experimental/blob/main/examples/fully_yielded_zephyr_subgraph.py:
+    1. Locate a complete Zephyr sublattice in the defective QPU graph via
+       ``find_sublattice_embeddings``.
+    2. Relabel it to canonical coordinates for ``zephyr_quotient_search``.
+    3. Embed a source Zephyr graph (with ``n_nodes`` nodes) into the sublattice.
+    4. Refine with ``find_embedding`` if quotient search did not reach full yield.
+    5. Map the resulting chain embedding back to original QPU qubit labels.
+
+    Args:
+        n_nodes: Required number of logical nodes (equal to the latent space size).
+        qpu_graph: The defective QPU graph as returned by ``qpu.to_networkx_graph()``.
+        random_seed: Random seed forwarded to sublattice search.
+
+    Returns:
+        ``(logical_graph, chain_embedding)`` where ``logical_graph`` has integer
+        nodes ``0..n_nodes-1`` and ``chain_embedding`` maps each integer node to a
+        list of physical QPU qubits suitable for ``FixedEmbeddingComposite``.
+        Returns ``None`` when no suitable embedding can be found.
+    """
+    qpu_rows = qpu_graph.graph.get("rows")
+    qpu_tile = qpu_graph.graph.get("tile", 4)
+    labels = qpu_graph.graph.get("labels")
+
+    if not isinstance(qpu_rows, int) or qpu_rows <= 0:
+        return None
+
+    use_coords = labels == "coordinate"
+    zephyr_tile = dnx.zephyr_graph(qpu_rows, qpu_tile, coordinates=use_coords)
+
+    tile_embeddings = find_sublattice_embeddings(
+        S=zephyr_tile,
+        T=qpu_graph,
+        max_num_emb=1,
+        one_to_iterable=False,
+        seed=random_seed,
+    )
+    if not tile_embeddings:
+        print("Zephyr fallback: no complete sublattice found in defective QPU graph.")
+        return None
+
+    tile_embedding = tile_embeddings[0]  # {tile_node: physical_qubit}
+
+    sublattice_nodes = set(tile_embedding.values())
+    target_sub = qpu_graph.subgraph(sublattice_nodes).copy()
+    inv_map = {phys: tile_node for tile_node, phys in tile_embedding.items()}
+    target_sub = nx.relabel_nodes(target_sub, inv_map, copy=True)
+    target_sub.graph.update(
+        family="zephyr",
+        rows=qpu_rows,
+        tile=qpu_tile,
+        labels="coordinate" if use_coords else "int",
+    )
+
+    source = None
+    for t_s in range(qpu_tile, 0, -1):
+        candidate = dnx.zephyr_graph(qpu_rows, t_s, coordinates=use_coords)
+        if candidate.number_of_nodes() == n_nodes:
+            source = candidate
+            break
+
+    if source is None:
+        print(
+            f"Zephyr fallback: no source Zephyr graph with {n_nodes} nodes found "
+            f"for QPU rows={qpu_rows} tile={qpu_tile}."
+        )
+        return None
+
+    emb, metadata = zephyr_quotient_search(source, target_sub, yield_type="edge")
+    best_emb = emb
+
+    if metadata.final_num_yielded < metadata.max_num_yielded:
+        print(
+            f"Zephyr fallback: quotient search placed {metadata.final_num_yielded}/"
+            f"{metadata.max_num_yielded} edges; refining with find_embedding."
+        )
+        refined = find_embedding(S=source, T=target_sub, initial_chains=emb, timeout=50)
+        if refined:
+            best_emb = refined
+
+    if not best_emb:
+        print("Zephyr fallback: embedding search returned no result.")
+        return None
+
+    chain_embedding_in_qpu = {
+        s_node: [tile_embedding[v] for v in chain]
+        for s_node, chain in best_emb.items()
+    }
+
+    source_to_int = {node: i for i, node in enumerate(source.nodes())}
+    logical_graph = nx.relabel_nodes(source, source_to_int)
+    int_chain_embedding = {
+        source_to_int[s]: chains for s, chains in chain_embedding_in_qpu.items()
+    }
+
+    return logical_graph, int_chain_embedding
+
+
 def get_graph_mapping(graph: Optional[nx.Graph]) -> tuple[nx.Graph, dict]:
     """Maps a graph of the QPU to the encoded latent data.
 
@@ -122,10 +232,23 @@ def get_sampler_and_sampler_kwargs(
 
     qpu = DWaveSampler(solver=qpu)
     qpu_graph = qpu.to_networkx_graph()
-    subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
-    mapped_graph, mapping = get_graph_mapping(subgraph)
 
-    sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
+    try:
+        subgraph = greedy_get_subgraph(n_nodes=n_latents, random_seed=random_seed, graph=qpu_graph)
+        mapped_graph, mapping = get_graph_mapping(subgraph)
+        sampler = FixedEmbeddingComposite(qpu, {l_: [p] for p, l_ in mapping.items()})
+    except Exception:
+        qpu_topology = qpu.properties["topology"]["type"]
+        if qpu_topology != "zephyr":
+            raise
+        fallback = _try_zephyr_sublattice_fallback(
+            n_nodes=n_latents, qpu_graph=qpu_graph, random_seed=random_seed
+        )
+        if fallback is None:
+            raise
+        mapped_graph, chain_embedding = fallback
+        sampler = FixedEmbeddingComposite(qpu, chain_embedding)
+
     linear_range, quadratic_range = qpu.properties["h_range"], qpu.properties["j_range"]
     sampler_kwargs = dict(
         num_reads=num_reads,

@@ -1,5 +1,6 @@
 dash[diskcache]~=3.2
 dash-bootstrap-components~=2.0
+dwave-experimental==2026.5.27
 dwave-ocean-sdk~=9.0
 dwave-pytorch-plugin~=0.3
 einops~=0.8
