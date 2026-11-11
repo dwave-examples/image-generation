@@ -16,25 +16,25 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Optional
 
 from dash import dcc, html
-from dwave.cloud import Client
 from plotly import graph_objects as go
 import dash_bootstrap_components as dbc
 
 from demo_configs import (
     DEFAULT_QPU,
     DESCRIPTION,
-    EXAMPLE_IMAGE_INDEX,
+    FFHQ_MODEL_NAME,
     MAIN_HEADER,
     SLIDER_EPOCHS,
     SLIDER_LATENTS,
     THEME_COLOR_SECONDARY,
     THUMBNAIL,
 )
+from src.generation import get_engine
 from src.utils.callback_helpers import (
-    get_example_image,
     LATENT_ENCODED_FILE,
     STEP_1_FILE,
     STEP_2_FILE,
@@ -42,16 +42,15 @@ from src.utils.callback_helpers import (
     STEP_5_FILE_DEFAULT
 )
 
-# Initialize available QPUs
+# Only offer QPUs with surviving precomputed FFHQ embeddings.
 try:
-    client = Client.from_config(client="qpu")
-    SOLVERS = [qpu.name for qpu in client.get_solvers()]
-
-    if not len(SOLVERS):
-        raise Exception
-
+    INFERENCE_QPUS, unavailable = get_engine().available_solvers()
+    INFERENCE_STATUS = " ".join(unavailable)
 except Exception:
-    SOLVERS = ["No Leap Access"]
+    logging.getLogger(__name__).exception("Could not initialize FFHQ inference or query QPUs.")
+    INFERENCE_QPUS = []
+    INFERENCE_STATUS = "Could not initialize FFHQ inference or query QPUs. See the server log."
+SOLVERS = [option["value"] for option in INFERENCE_QPUS] or ["No Leap Access"]
 
 # Initialize the latent diagram with either the available file or random +/- 1s
 try:
@@ -267,13 +266,20 @@ def generate_generate_tab() -> html.Div:
             dropdown(
                 "Trained Model",
                 "model-file-name",
-                generate_options(["No Models Found (please train and save a model)"]),
+                [{"label": "FFHQ EMA (step 540,000)", "value": FFHQ_MODEL_NAME}],
             ),
+            dropdown(
+                "QPU",
+                "inference-qpu",
+                INFERENCE_QPUS or [{"label": "No supported QPU available", "value": None}],
+                value=DEFAULT_QPU if DEFAULT_QPU in SOLVERS else None,
+            ),
+            html.P(INFERENCE_STATUS, role="status"),
             html.Div(id="model-details"),
             checklist(
                 "",
                 "tune-params",
-                generate_options(["Tune Parameters"]),
+                [{"label": "Tune Parameters", "value": 0, "disabled": True}],
                 [],
             ),
             html.Div(
@@ -329,6 +335,7 @@ def generate_settings_form() -> dcc.Tabs:
             dcc.Tab(
                 label="Train",
                 id="train-tab",
+                disabled=True,
                 className="tab",
                 children=[
                     generate_train_tab(),
@@ -497,7 +504,7 @@ def create_interface():
             dcc.Store(id="last-trained-model"),
             dcc.Store(id="last-saved-id"),
             dcc.Store(id="latent-mapping"),
-            dcc.Store(id="example-image", data=get_example_image(EXAMPLE_IMAGE_INDEX)),
+            dcc.Store(id="example-image"),
             dcc.Interval(id="epoch-checker", interval=500, disabled=True),
             # Header brand banner
             html.Div(
@@ -659,6 +666,7 @@ def create_interface():
                                     dcc.Tab(
                                         label="Generated Images",
                                         id="results-tab",
+                                        value="results-tab",
                                         className="tab",
                                         disabled=True,
                                         children=[
@@ -699,6 +707,7 @@ def create_interface():
                                                                         className="graph",
                                                                     ),
                                                                 ],
+                                                                style={"display": "none"},
                                                             ),
                                                         ],
                                                     ),

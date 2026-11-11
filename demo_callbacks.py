@@ -15,8 +15,8 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
-import os
 import random
 import re
 from pathlib import Path
@@ -25,20 +25,21 @@ import torch
 
 import dash
 import plotly.io as pio
-from dash import ALL, ctx, MATCH
+from dash import ALL, ctx, html, MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
+from torchvision.utils import make_grid
 
-from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
+from demo_configs import FFHQ_MODEL_NAME, GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS
 from demo_interface import (
     SOLVERS,
     generate_latent_vector,
     generate_model_data,
-    generate_options,
     generate_problem_details_table
 )
 from src.model_wrapper import ModelWrapper
+from src.generation import get_engine, image_data_uri
 from src.utils.callback_helpers import (
     IMAGE_GEN_FILE_PREFIX,
     IMAGE_RECON_FILE_PREFIX,
@@ -197,7 +198,7 @@ class CheckQpuAndUpdateModelReturn(NamedTuple):
     Output("has-loaded-diagram", "data"),
     inputs=[
         Input("model-file-name", "value"),
-        Input("qpu-setting", "value"),
+        Input("inference-qpu", "value"),
         Input("n-latents", "value"),
         Input("setting-tabs", "value"),
         State("example-image", "data"),
@@ -237,6 +238,12 @@ def check_qpu_and_update_model(
             step_5_img: The file path for the output image.
             has_loaded_diagram: Keeps track of whether this is a page load.
     """
+    if model_file_name == FFHQ_MODEL_NAME:
+        return CheckQpuAndUpdateModelReturn(
+            generate_button_disabled=qpu not in SOLVERS,
+            model_details=html.P("Pretrained FFHQ decoder; inference only."),
+        )
+
     switched_to_generate_tab = ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
 
     # If first load, or a new model is chosen, or the settings tab is changed to "generate"
@@ -316,7 +323,7 @@ def toggle_tuning_params(tune_params: list[int]) -> str:
     Input("last-trained-model", "data"),
 )
 def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
-    """Initializes the Trained Models dropdown options based on model files available.
+    """Selects the bundled FFHQ checkpoint without loading legacy training models.
 
     Args:
         last_trained_model: The most recently trained model directiory name.
@@ -325,22 +332,9 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
         model-file-name-options: The options for the Trained Model dropdown selection.
         model-file-name-value: The value of the dropdown.
     """
-    models = []
-    project_directory = os.path.dirname(os.path.realpath(__file__))
-
-    models_dir = os.path.join(project_directory, "models")
-    directories = os.fsencode(models_dir)
-
-    for dir in os.listdir(directories):
-        directory = os.fsdecode(dir)
-        models.append(directory)
-
-    if not len(models):
-        models = generate_options(["No Models Found (please train and save a model)"])
-
     return (
-        models,
-        last_trained_model if last_trained_model else models[0],
+        [{"label": "FFHQ EMA (step 540,000)", "value": FFHQ_MODEL_NAME}],
+        FFHQ_MODEL_NAME,
     )
 
 
@@ -631,6 +625,8 @@ def train(
             last-trained-model: The directory name of the model trained by this run.
             progress-wrapper-className: The classname of the progress wrapper.
     """
+    raise PreventUpdate  # Training stays disabled until the legacy path is removed.
+
     model = ModelWrapper(qpu=qpu, n_latents=n_latents)
 
     # Dash converts the tensor to a list of floats, convert back to tensor
@@ -675,6 +671,7 @@ class GenerateReturn(NamedTuple):
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
     problem_details_table: list = dash.no_update
+    tabs_value: str = "results-tab"
 
 
 @dash.callback(
@@ -687,109 +684,57 @@ class GenerateReturn(NamedTuple):
     Output("results-tab", "disabled", allow_duplicate=True),
     Output("loss-tab", "disabled", allow_duplicate=True),
     Output("problem-details", "children", allow_duplicate=True),
-    background=True,
+    Output("tabs", "value", allow_duplicate=True),
     inputs=[
         Input("generate-button", "n_clicks"),
         State("model-file-name", "value"),
-        State("tune-params", "value"),
-        State({"type": "n-epochs", "index": 1}, "value"),
-        State("example-image", "data"),
+        State("inference-qpu", "value"),
     ],
     running=[
-        (Output("cancel-generation-button", "className"), "", "display-none"),
-        (Output("generate-button", "className"), "display-none", ""),
-        (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
+        (Output("generate-button", "disabled", allow_duplicate=True), True, False),
+        (Output("inference-qpu", "disabled"), True, False),
+        (Output("model-file-name", "disabled"), True, False),
         (Output("results-tab", "label"), "Generating...", "Generated Images"),
-        (Output("loss-tab", "label"), "Generating...", "Loss Graphs"),
-        (Output("epoch-checker", "disabled"), False, True),
     ],
-    progress=[
-        Output({"type": "progress", "index": 1}, "value"),
-        Output({"type": "progress", "index": 1}, "max"),
-    ],
-    cancel=[Input("cancel-generation-button", "n_clicks")],
     prevent_initial_call=True,
 )
 def generate(
-    set_progress,
     generate_click: int,
     model_file_name: str,
-    tune_parameters: list,
-    n_epochs: int,
-    example_image: list,
+    qpu: str,
 ) -> GenerateReturn:
-    """Runs generation and updates UI accordingly.
-
-    This function is called when the ``Generate`` button is clicked. It takes in all form values and
-    runs the generation, updates the run/cancel buttons, deactivates (and reactivates) the results
-    tab, and updates all relevant HTML components.
-
-    Args:
-        generate_click: The (total) number of times the generate button has been clicked.
-        model_file_name: The currently selected model directory name.
-        tune_parameters: Whether to tune the parameters while generating.
-        n_epochs: The number of epochs for the parameter tuning.
-        example_image: The example image to show all the steps for in the UI.
-
-    Returns:
-        A named tuple, GenerateReturn, containing all outputs to be used when updating the HTML
-        template (in ``demo_interface.py``). These are:
-
-            fig_generated: The generated image output.
-            fig_reconstructed: The image comparing the reconstructed image to the original.
-            fig_mse_loss: The graph showing the MSE Loss.
-            fig_total_loss: The graph showing the total Loss (MMD + MSE).
-            popup_classname: The classname of the error popup.
-            progress_wrapper_classname: The classname of the progress wrapper.
-            results_tab_disabled: Whether the results tab should be disabled.
-            loss_tab_disabled: Whether the loss tab should be disabled.
-            problem_details_table: The html for a table outlining the details each epoch.
-    """
-    # load autoencoder model and config
-    with open(MODEL_PATH / model_file_name / "parameters.json") as file:
-        model_data = json.load(file)
-    with open(MODEL_PATH / model_file_name / "losses.json") as file:
-        loss_data = json.load(file)
-
-    if model_data["qpu"] and not (len(SOLVERS) and model_data["qpu"] in SOLVERS):
-        return GenerateReturn(popup_classname="")
-
-    model = ModelWrapper(qpu=model_data["qpu"], n_latents=model_data["n_latents"])
-    model.load(file_path=MODEL_PATH / model_file_name)
-
-    if tune_parameters:
-        # Dash converts the tensor to a list of floats, convert back to tensor
-        example_image = torch.tensor(example_image, dtype=torch.float32)
-
-        model.train_init(n_epochs)
-        fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
-            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data, example_image=example_image
+    """Generate four selected FFHQ faces using cached, read-only inference models."""
+    try:
+        if model_file_name != FFHQ_MODEL_NAME:
+            raise ValueError("Select the bundled FFHQ inference model.")
+        result = get_engine().generate(qpu)
+        grid = make_grid(result.images, nrow=2, padding=0)
+        fig_output = go.Figure(go.Image(source=image_data_uri(grid)))
+        fig_output.update_xaxes(showticklabels=False)
+        fig_output.update_yaxes(showticklabels=False)
+        fig_output.update_layout(margin={"t": 0, "l": 0, "b": 0, "r": 0})
+    except Exception:
+        logging.getLogger(__name__).exception("FFHQ generation failed on %s.", qpu)
+        return GenerateReturn(
+            fig_generated=go.Figure(),
+            results_tab_disabled=False,
+            loss_tab_disabled=True,
+            problem_details_table=[
+                html.P("Generation failed. See the server log; no substitute samples were used.")
+            ],
         )
 
-        model_file_name += f"_tuned_{n_epochs}_epochs"
-
-        loss_data["mse_losses"] += model.losses["mse_losses"]
-        loss_data["dvae_losses"] += model.losses["dvae_losses"]
-
-        Path(MODEL_PATH / model_file_name).mkdir(exist_ok=True)
-
-        create_model_files(
-            model, model_file_name, model_data["qpu"], model_data["n_latents"], n_epochs, loss_data
-        )
-
-    else:
-        fig_output = model.generate_output(latent_qpu_file=LATENT_QPU_FILE, sharpen=SHARPEN_OUTPUT)
-        fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
-
-    model.losses = loss_data
-    fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()
-
+    info = result.metadata
     return GenerateReturn(
         fig_generated=fig_output,
-        fig_reconstructed=fig_reconstructed,
-        fig_mse_loss=fig_mse_loss,
-        fig_total_loss=fig_dvae_loss,
         results_tab_disabled=False,
-        loss_tab_disabled=False,
-        problem_details_table=dash.no_update if tune_parameters else [],
+        loss_tab_disabled=True,
+        problem_details_table=generate_problem_details_table({
+            "QPU": info["solver"],
+            "Embedding": info["embedding_id"],
+            "Candidates": info["candidates"],
+            "EMA step": info["checkpoint_step"],
+            "Seconds": f"{info['seconds']:.1f}",
+            "Quality ranks": ", ".join(map(str, result.quality_ranks)),
+        }),
     )
