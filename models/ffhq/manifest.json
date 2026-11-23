@@ -2,9 +2,9 @@
   "format": "ffhq_demo_inference_v1",
   "source": {
     "repository": "dwavesystems/ml-etc",
-    "run": "ffhq256_z5t3_multi20m_fast100ns_normadd_norecongan_fresh",
+    "run": "ffhq256_z5t3_multi20m_fast100ns_normadd_norecongan_bottleneck660",
     "checkpoint": "weights_step_00540000.pt",
-    "sha256": "a952bb1e912651985a230df3e5ff96e59dacb9e0fd695a4c547815618f10f014",
+    "sha256": "2d719ef1d3fd47ce5390dedb36b839db55bdb3db15c2bd129df9d05d35c862b1",
     "step": 540000,
     "weights": "ema_model_state_dict"
   },
@@ -28,7 +28,9 @@
     "emb_dim": 256,
     "norm_first": true,
     "use_bottleneck_attention": true,
-    "qpu_global_mode_rank": 64
+    "qpu_global_mode_rank": 64,
+    "latent_bottleneck_dim": 660,
+    "latent_bottleneck_hidden_dim": 1024
   },
   "nodes": [
     0,
@@ -19589,15 +19591,15 @@
   "shards": [
     {
       "path": "decoder-01.pt",
-      "sha256": "1a152fc82ce8725bfd9c9f371096742dec3e26b7c1bd510fb016b5ed7864c53b"
+      "sha256": "52fa3a9860f8d482f2150b081736d5fc408d92115380e2b21223349efba3f42a"
     },
     {
       "path": "decoder-02.pt",
-      "sha256": "b76db0613a7f58cfdda1458dfd7c9365f5ce7bcc8562510cb39cb5b5d41c10c1"
+      "sha256": "75d3cfd9595c07b74ad2452b7cc809509d340e343083a32fb74390004cfaece5"
     },
     {
       "path": "decoder-03.pt",
-      "sha256": "3aa88c93864272be98b541d07fbc1fa8fb13459cada8444fc2f604d4a2960e59"
+      "sha256": "dc961ffc13153134704e40ee348d8c540d38f25c6f4fba2f3790f73e51e6696c"
     }
   ]
 }

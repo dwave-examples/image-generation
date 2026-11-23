@@ -35,6 +35,8 @@ class DecoderConfig:
     norm_first: bool = True
     use_bottleneck_attention: bool = True
     qpu_global_mode_rank: int = 64
+    latent_bottleneck_dim: int = 0
+    latent_bottleneck_hidden_dim: int = 1024
 
     @property
     def latent_resolution(self) -> int:
@@ -43,6 +45,14 @@ class DecoderConfig:
     @property
     def latent_dim(self) -> int:
         return self.codebook_size * self.latent_resolution**2
+
+    @property
+    def qpu_latent_dim(self) -> int:
+        return (
+            self.latent_bottleneck_dim
+            if self.latent_bottleneck_dim > 0
+            else self.latent_dim
+        )
 
 
 def normalize(channels: int) -> nn.GroupNorm:
@@ -156,6 +166,34 @@ class GlobalModeResidual(nn.Module):
         )
 
 
+class LatentBottleneckTransform(nn.Module):
+    def __init__(self, in_dim: int, out_dim: int, hidden_dim: int = 1024) -> None:
+        super().__init__()
+        self.in_dim = int(in_dim)
+        self.out_dim = int(out_dim)
+        self.hidden_dim = int(hidden_dim)
+        self.norm = nn.LayerNorm(self.in_dim)
+        self.linear = nn.Linear(self.in_dim, self.out_dim)
+        if self.hidden_dim > 0:
+            self.mlp = nn.Sequential(
+                nn.Linear(self.in_dim, self.hidden_dim),
+                nn.LayerNorm(self.hidden_dim),
+                nn.SiLU(),
+                nn.Linear(self.hidden_dim, self.out_dim),
+            )
+        else:
+            self.mlp = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        orig_dtype = x.dtype
+        flat = x.reshape(x.shape[0], self.in_dim).float()
+        normed = self.norm(flat)
+        out = self.linear(normed)
+        if self.mlp is not None:
+            out = out + self.mlp(normed)
+        return out.to(dtype=orig_dtype)
+
+
 class FFHQDecoder(nn.Module):
     def __init__(
         self, cfg: DecoderConfig, coupling: torch.Tensor, bias: torch.Tensor
@@ -165,14 +203,25 @@ class FFHQDecoder(nn.Module):
         self.generator = Generator(cfg)
         self.quantize = nn.Module()
         self.quantize.embed = nn.Embedding(cfg.codebook_size, cfg.emb_dim)
+        if cfg.latent_bottleneck_dim > 0:
+            self.quantize.bottleneck_up = LatentBottleneckTransform(
+                cfg.latent_bottleneck_dim,
+                cfg.latent_dim,
+                hidden_dim=cfg.latent_bottleneck_hidden_dim,
+            )
         self.qpu_global_mode_residual = GlobalModeResidual(
-            cfg.latent_dim, cfg.qpu_global_mode_rank
+            cfg.qpu_latent_dim, cfg.qpu_global_mode_rank
         )
         self.register_buffer("coupling", coupling, persistent=False)
         self.register_buffer("bias", bias, persistent=False)
         logical_nodes = coupling.shape[0]
-        # Match ml-etc's floor-based 660 -> 4096 resizing, including the Hamiltonian.
-        index = torch.arange(cfg.latent_dim) * logical_nodes // cfg.latent_dim
+        if cfg.latent_bottleneck_dim > 0 and logical_nodes != cfg.latent_bottleneck_dim:
+            raise ValueError(
+                f"Bottleneck dimension {cfg.latent_bottleneck_dim} does not match "
+                f"logical Ising node count {logical_nodes}."
+            )
+        # Match ml-etc's floor-based resizing (identity when qpu_latent_dim == logical_nodes).
+        index = torch.arange(cfg.qpu_latent_dim) * logical_nodes // cfg.qpu_latent_dim
         self.register_buffer("latent_index", index, persistent=False)
         expanded = coupling.index_select(0, index).index_select(1, index)
         self.register_buffer(
@@ -186,7 +235,10 @@ class FFHQDecoder(nn.Module):
         return self.qpu_global_mode_residual(resized * field)
 
     def forward(self, spins: torch.Tensor) -> torch.Tensor:
-        code = self.decoder_input(spins).reshape(
+        code = self.decoder_input(spins)
+        if self.cfg.latent_bottleneck_dim > 0:
+            code = self.quantize.bottleneck_up(code)
+        code = code.reshape(
             -1,
             self.cfg.codebook_size,
             self.cfg.latent_resolution,
