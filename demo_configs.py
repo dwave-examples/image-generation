@@ -14,6 +14,8 @@
 
 """This file stores input parameters for the app."""
 
+from pathlib import Path
+
 # THEME_COLOR is used for the button, text, and banner and should be dark
 # and pass accessibility checks with white: https://webaim.org/resources/contrastchecker/
 # THEME_COLOR_SECONDARY can be light or dark and is used for sliders, loading icon, and tabs
@@ -61,3 +63,13 @@ SLIDER_EPOCHS = {
 SHARPEN_OUTPUT = False
 UPPER_THRESHOLD = 0.6
 LOWER_THRESHOLD = 0.4
+
+# Pretrained FFHQ inference settings.
+ROOT = Path(__file__).resolve().parent
+FFHQ_MODEL_NAME = "ffhq"
+MODEL_DIRECTORY = ROOT / "models" / FFHQ_MODEL_NAME
+EMBEDDING_DIRECTORY = MODEL_DIRECTORY / "embeddings"
+CANDIDATE_COUNT = 32
+DECODE_BATCH_SIZE = 1
+CPU_THREADS = 4
+DEVICE = "cpu"
