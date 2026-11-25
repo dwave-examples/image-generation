@@ -21,11 +21,11 @@ import random
 import re
 from pathlib import Path
 from typing import NamedTuple
-import torch
 
 import dash
 import plotly.io as pio
-from dash import ALL, ctx, MATCH
+import torch
+from dash import ALL, MATCH, ctx
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
@@ -36,7 +36,7 @@ from demo_interface import (
     generate_latent_vector,
     generate_model_data,
     generate_options,
-    generate_problem_details_table
+    generate_problem_details_table,
 )
 from src.model_wrapper import ModelWrapper
 from src.utils.callback_helpers import (
@@ -60,13 +60,14 @@ from src.utils.callback_helpers import (
 
 @dash.callback(
     Output({"type": "to-collapse-class", "index": MATCH}, "className"),
+    Output({"type": "collapse-trigger", "index": MATCH}, "aria-expanded"),
     inputs=[
         Input({"type": "collapse-trigger", "index": MATCH}, "n_clicks"),
         State({"type": "to-collapse-class", "index": MATCH}, "className"),
     ],
     prevent_initial_call=True,
 )
-def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
+def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> tuple[str, str]:
     """Toggles a 'collapsed' class that hides and shows some aspect of the UI.
 
     Args:
@@ -76,13 +77,14 @@ def toggle_left_column(collapse_trigger: int, to_collapse_class: str) -> str:
 
     Returns:
         str: The new class name of the thing to collapse.
+        str: The aria-expanded value.
     """
 
     classes = to_collapse_class.split(" ") if to_collapse_class else []
     if "collapsed" in classes:
         classes.remove("collapsed")
-        return " ".join(classes)
-    return to_collapse_class + " collapsed" if to_collapse_class else "collapsed"
+        return " ".join(classes), "true"
+    return to_collapse_class + " collapsed" if to_collapse_class else "collapsed", "false"
 
 
 @dash.callback(
@@ -146,11 +148,16 @@ def update_model_diagram_imgs(
     fig_qpu = go.Figure(fig_qpu)
     fig_encoded = go.Figure(fig_encoded)
 
-    with open(LATENT_QPU_FILE, "r") as f:
-        latent_qpu = json.load(f)
+    try:
+        with open(LATENT_QPU_FILE, "r") as f:
+            latent_qpu = json.load(f)
 
-    with open(LATENT_ENCODED_FILE, "r") as f:
-        latent_encoded = json.load(f)
+        with open(LATENT_ENCODED_FILE, "r") as f:
+            latent_encoded = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # The latent files are written during the run (latent_qpu.json only at the end of each
+        # epoch), so they may be missing or half-written on early progress ticks.
+        raise PreventUpdate
 
     color_mapping_qpu = [GRAPH_COLORS[int(latent_qpu[i] > 0)] for i in latent_mapping]
     color_mapping_encoded = [GRAPH_COLORS[int(latent_encoded[i] > 0)] for i in latent_mapping]
@@ -183,6 +190,7 @@ class CheckQpuAndUpdateModelReturn(NamedTuple):
     step_5_img: str = dash.no_update
     has_loaded_diagram: bool = True
 
+
 @dash.callback(
     Output("popup", "className"),
     Output("generate-button", "disabled"),
@@ -202,7 +210,7 @@ class CheckQpuAndUpdateModelReturn(NamedTuple):
         Input("setting-tabs", "value"),
         State("example-image", "data"),
         State("has-loaded-diagram", "data"),
-    ]
+    ],
 )
 def check_qpu_and_update_model(
     model_file_name: str,
@@ -237,7 +245,9 @@ def check_qpu_and_update_model(
             step_5_img: The file path for the output image.
             has_loaded_diagram: Keeps track of whether this is a page load.
     """
-    switched_to_generate_tab = ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
+    switched_to_generate_tab = (
+        ctx.triggered_id == "setting-tabs" and setting_tabs_value == "generate-tab"
+    )
 
     # If first load, or a new model is chosen, or the settings tab is changed to "generate"
     if not ctx.triggered_id or ctx.triggered_id == "model-file-name" or switched_to_generate_tab:
@@ -279,7 +289,11 @@ def check_qpu_and_update_model(
             latent_mapping=latent_mapping,
             step_2_img=f"{STEP_2_FILE}?force_refresh={force_refresh}",
             step_4_img=f"{STEP_4_FILE}?force_refresh={force_refresh}",
-            step_5_img=f"{STEP_5_FILE}?force_refresh={force_refresh}" if has_loaded_diagram else dash.no_update,
+            step_5_img=(
+                f"{STEP_5_FILE}?force_refresh={force_refresh}"
+                if has_loaded_diagram
+                else dash.no_update
+            ),
             has_loaded_diagram=False if not ctx.triggered_id else True,
         )
 
@@ -296,22 +310,22 @@ def check_qpu_and_update_model(
 
 @dash.callback(
     Output("tune-parameter-settings", "className"),
-    Input("tune-params", "value"),
+    Input("tune-params", "checked"),
 )
-def toggle_tuning_params(tune_params: list[int]) -> str:
+def toggle_tuning_params(tune_params: bool) -> str:
     """Show/hide tune parameter settings when Tune Parameters box is toggled.
 
     Args:
-        tune_params: The value of the Tune Parameters checkbox as a list.
+        tune_params: The value of the Tune Parameters checkbox.
 
     Returns:
         tune-parameter-settings-classname: The class name to show/hide the tune parameter settings.
     """
-    return "" if len(tune_params) else "display-none"
+    return "" if tune_params else "display-none"
 
 
 @dash.callback(
-    Output("model-file-name", "options"),
+    Output("model-file-name", "data"),
     Output("model-file-name", "value"),
     Input("last-trained-model", "data"),
 )
@@ -319,10 +333,10 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
     """Initializes the Trained Models dropdown options based on model files available.
 
     Args:
-        last_trained_model: The most recently trained model directiory name.
+        last_trained_model: The most recently trained model directory name.
 
     Returns:
-        model-file-name-options: The options for the Trained Model dropdown selection.
+        model-file-name-data: The options for the Trained Model dropdown selection.
         model-file-name-value: The value of the dropdown.
     """
     models = []
@@ -336,10 +350,10 @@ def initialize_training_model(last_trained_model: str) -> tuple[list[str], str]:
         models.append(directory)
 
     if not len(models):
-        models = generate_options(["No Models Found (please train and save a model)"])
+        models = ["No Models Found (please train and save a model)"]
 
     return (
-        models,
+        generate_options(models),
         last_trained_model if last_trained_model else models[0],
     )
 
@@ -406,7 +420,7 @@ def cancel_progress(cancel_train: int, cancel_generate: int) -> tuple[str, str]:
         progress-wrapper-className: The classname of the second progress wrapper.
     """
 
-    return "visibility-hidden", "visibility-hidden"
+    return "display-none", "display-none"
 
 
 @dash.callback(
@@ -482,8 +496,8 @@ class UpdateEachEpochReturn(NamedTuple):
     Output("results-tab", "disabled"),
     Output("loss-tab", "disabled"),
     Output("tabs", "value"),
-    Output("results-tab", "label"),
-    Output("loss-tab", "label"),
+    Output("results-tab", "children"),
+    Output("loss-tab", "children"),
     Output("problem-details", "children"),
     inputs=[
         Input("epoch-checker", "n_intervals"),
@@ -583,11 +597,11 @@ def update_each_epoch(epoch_checker: int, last_saved_id: int) -> UpdateEachEpoch
         State("example-image", "data"),
     ],
     running=[
-        (Output("cancel-training-button", "className"), "", "display-none"),
-        (Output("train-button", "className"), "display-none", ""),
+        (Output("cancel-training-button", "style"), {}, {"display": "none"}),
+        (Output("train-button", "style"), {"display": "none"}, {}),
         (Output("generate-tab", "disabled"), True, False),  # Disables generate tab while running.
-        (Output("results-tab", "label"), "Training...", "Generated Images"),
-        (Output("loss-tab", "label"), "Training...", "Loss Graphs"),
+        (Output("results-tab", "children"), "Training...", "Generated Images"),
+        (Output("loss-tab", "children"), "Training...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     cancel=[Input("cancel-training-button", "n_clicks")],
@@ -659,7 +673,7 @@ def train(
         fig_mse_loss,
         fig_dvae_loss,
         file_name,
-        "visibility-hidden",
+        "display-none",
     )
 
 
@@ -671,7 +685,7 @@ class GenerateReturn(NamedTuple):
     fig_mse_loss: go.Figure = dash.no_update
     fig_total_loss: go.Figure = dash.no_update
     popup_classname: str = "display-none"
-    progress_wrapper_classname: str = "visibility-hidden"
+    progress_wrapper_classname: str = "display-none"
     results_tab_disabled: bool = dash.no_update
     loss_tab_disabled: bool = dash.no_update
     problem_details_table: list = dash.no_update
@@ -691,16 +705,16 @@ class GenerateReturn(NamedTuple):
     inputs=[
         Input("generate-button", "n_clicks"),
         State("model-file-name", "value"),
-        State("tune-params", "value"),
+        State("tune-params", "checked"),
         State({"type": "n-epochs", "index": 1}, "value"),
         State("example-image", "data"),
     ],
     running=[
-        (Output("cancel-generation-button", "className"), "", "display-none"),
-        (Output("generate-button", "className"), "display-none", ""),
+        (Output("cancel-generation-button", "style"), {}, {"display": "none"}),
+        (Output("generate-button", "style"), {"display": "none"}, {}),
         (Output("train-tab", "disabled"), True, False),  # Disables train tab while running.
-        (Output("results-tab", "label"), "Generating...", "Generated Images"),
-        (Output("loss-tab", "label"), "Generating...", "Loss Graphs"),
+        (Output("results-tab", "children"), "Generating...", "Generated Images"),
+        (Output("loss-tab", "children"), "Generating...", "Loss Graphs"),
         (Output("epoch-checker", "disabled"), False, True),
     ],
     progress=[
@@ -714,7 +728,7 @@ def generate(
     set_progress,
     generate_click: int,
     model_file_name: str,
-    tune_parameters: list,
+    tune_parameters: bool,
     n_epochs: int,
     example_image: list,
 ) -> GenerateReturn:
@@ -763,7 +777,13 @@ def generate(
 
         model.train_init(n_epochs)
         fig_output, fig_reconstructed, fig_mse_loss, fig_dvae_loss = execute_training(
-            set_progress, model, n_epochs, model_data["qpu"], model_data["n_latents"], loss_data, example_image=example_image
+            set_progress,
+            model,
+            n_epochs,
+            model_data["qpu"],
+            model_data["n_latents"],
+            loss_data,
+            example_image=example_image,
         )
 
         model_file_name += f"_tuned_{n_epochs}_epochs"
@@ -779,7 +799,7 @@ def generate(
 
     else:
         fig_output = model.generate_output(latent_qpu_file=LATENT_QPU_FILE, sharpen=SHARPEN_OUTPUT)
-        fig_reconstructed = model.generate_reconstucted_samples(sharpen=SHARPEN_OUTPUT)
+        fig_reconstructed = model.generate_reconstructed_samples(sharpen=SHARPEN_OUTPUT)
 
     model.losses = loss_data
     fig_mse_loss, fig_dvae_loss = model.generate_loss_plot()

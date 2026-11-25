@@ -24,8 +24,13 @@ body {
     overflow: hidden;
 }
 
-.tab-content-results {
-    padding: 3rem 3rem 0;
+.tab-content-wrapper {
+    background-color: black;
+}
+
+#tabs-panel-results-tab .tab-content-wrapper,
+#tabs-panel-loss-tab .tab-content-wrapper {
+    padding: 1.875rem 1.875rem 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -33,17 +38,14 @@ body {
     box-sizing: border-box;
 }
 
-.input, .results {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
+.tab-content-wrapper h3 {
+    color: var(--grey-lighter);
 }
 
 #input-file {
     padding: 1rem;
     border: 1px dashed var(--grey-dark);
-    border-radius: 0.5rem;
+    border-radius: 0.25rem;
     text-align: center;
 }
 
@@ -55,11 +57,11 @@ div.left-column .left-column-layer-2 {
 }
 
 .header-wrapper {
-    padding: 3rem 2rem 2rem;
+    padding: 1.875rem 1.25rem 1.25rem;
 }
 
 div.left-column .tab-content {
-    padding: 2rem 2rem 4rem;
+    padding: 1.25rem 1.25rem 2.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -67,7 +69,7 @@ div.left-column .tab-content {
 }
 
 div.left-column .tab {
-    padding: 0.6rem;
+    padding: 0.375rem;
     border: 1px solid #d6d6d6;
 }
 
@@ -83,13 +85,36 @@ div.left-column .tab {
     margin-top: 0;
 }
 
-#setting-tabs-parent .tab-content {
-    padding-top: 0;
-    padding-bottom: 2rem;
+#setting-tabs-panel-generate-tab .settings {
+    margin-bottom: 3rem;
 }
 
-.button-group {
-    margin-bottom: 2rem;
+#setting-tabs .banner {
+    background: none;
+    height: 4rem;
+    margin-bottom: 1.5rem;
+    padding: 0;
+}
+
+#setting-tabs .banner .mantine-Tabs-list {
+    --tabs-list-gap: 0;
+    width: 100%;
+}
+
+#setting-tabs .banner .mantine-Tabs-tab {
+    font-size: 1.25rem;
+    flex-basis: 50%;
+}
+
+.progress-bars {
+    margin: 1.25rem auto 0;
+    max-width: 22rem;
+}
+
+.progress-bars p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--grey-lighter);
 }
 
 .graph-wrapper-flex {
@@ -104,12 +129,12 @@ div.left-column .tab {
 }
 
 progress {
-    height: 2rem;
+    height: 1.25rem;
     width: 100%;
 }
 
 progress::-webkit-progress-bar {
-    background-color: var(--theme);
+    background-color: var(--blue-light);
 }
 
 .display-flex {
@@ -134,10 +159,10 @@ progress::-webkit-progress-bar {
 #popup > div {
     position: absolute;
     background-color: white;
-    left: calc(50% - 20rem);
+    left: calc(50% - 12.5rem);
     top: 40%;
     z-index: 10;
-    padding: 3rem;
+    padding: 1.875rem;
     width: 40rem;
     border-radius: 1rem;
     border: 4px solid var(--red-light);
@@ -146,8 +171,8 @@ progress::-webkit-progress-bar {
 #popup-toggle {
     position: absolute;
     right: 0;
-    top: -1.5rem;
-    font-size: 3rem;
+    top: -1rem;
+    font-size: 1.875rem;
     color: var(--red-light);
     cursor: pointer;
     padding: 1rem;
@@ -160,10 +185,14 @@ progress::-webkit-progress-bar {
 
 .model-details {
     margin-top: 1rem;
+    margin-bottom: 2rem;
 }
 
 .model-details p {
+    margin-top: 0.25rem;
     margin-bottom: 0;
+    font-size: 1rem;
+    color: var(--grey-lighter);
 }
 
 .checklist label {
@@ -171,7 +200,7 @@ progress::-webkit-progress-bar {
 }
 
 .problem-details-table {
-    margin-bottom: 4rem;
+    margin-bottom: 2.5rem;
 }
 
 #file-name-help-text {
@@ -191,17 +220,16 @@ progress::-webkit-progress-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: black;
-    height: calc(100vh - var(--banner-height) - 8.8rem);
+    height: calc(100vh - var(--banner-height));
     overflow: hidden;
-    padding: 0 2rem;
+    padding: 0 1.25rem;
 }
 
-.graph-model-wrapper .graph-model-itermediate-step {
+.graph-model-wrapper .graph-model-intermediate-step {
     width: 12%;
 }
 
-.graph-model-wrapper .graph-model-itermediate-step img {
+.graph-model-wrapper .graph-model-intermediate-step img {
     width: 100%;
     height: auto;
     image-rendering: pixelated;
@@ -225,12 +253,12 @@ progress::-webkit-progress-bar {
 
 #latent-space-vector {
     margin: auto;
-    font-size: 2rem;
-    border-left: 3px solid var(--theme-secondary);
-    border-right: 3px solid var(--theme-secondary);
+    font-size: 1.25rem;
+    border-left: 3px solid var(--blue-light);
+    border-right: 3px solid var(--blue-light);
     font-weight: 800;
     position: relative;
-    padding: 0 0.5rem;
+    padding: 0 0.25rem;
     text-align: center;
     display: flex;
     width: var(--latent-vector-width);
@@ -256,7 +284,7 @@ progress::-webkit-progress-bar {
     left: 0;
     height: 3px;
     width: 100%;
-    background: linear-gradient(to right, var(--theme-secondary) 3%, transparent 3%, transparent 97%, var(--theme-secondary) 97%);
+    background: linear-gradient(to right, var(--blue-light) 3%, transparent 3%, transparent 97%, var(--blue-light) 97%);
 }
 
 #latent-space-vector:after {
@@ -267,58 +295,57 @@ progress::-webkit-progress-bar {
   position: relative;
   display: flex;
   justify-content: center;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .curly-brace > div {
-  border-top: 3px solid var(--theme-secondary);
-  width: calc(var(--latent-vector-width)/2 - 2rem);
-  height: 2rem;
+  border-top: 3px solid var(--blue-light);
+  width: calc(var(--latent-vector-width)/2 - 1.25rem);
+  height: 1.25rem;
   position: relative;
 }
 
 .curly-brace > div:first-child {
-  border-top-right-radius: 2rem;
+  border-top-right-radius: 1.25rem;
 }
 
 .curly-brace > div:last-child {
-  border-top-left-radius: 2rem;
+  border-top-left-radius: 1.25rem;
 }
 
 .curly-brace > div:last-child:after,
 .curly-brace > div:first-child:before {
   content: "";
-  width: 2rem;
-  height: 2rem;
+  width: 1.25rem;
+  height: 1.25rem;
   position: absolute;
   display: block;
 }
 
 .curly-brace > div:first-child:before {  
-    border-bottom: 3px solid var(--theme-secondary);
-    border-bottom-left-radius: 2rem;
-    left: -2rem;
-    top: -2rem;
+    border-bottom: 3px solid var(--blue-light);
+    border-bottom-left-radius: 1.25rem;
+    left: -1.25rem;
+    top: -1.25rem;
 }
 
 .curly-brace > div:last-child:after {  
-    border-bottom: 3px solid var(--theme-secondary);
-    border-bottom-right-radius: 2rem;
-    top: -2rem;
-    right: -2rem;
+    border-bottom: 3px solid var(--blue-light);
+    border-bottom-right-radius: 1.25rem;
+    top: -1.25rem;
+    right: -1.25rem;
 }
 
 .latent-vector-diagram {
     text-align: center;
-    color: var(--theme-secondary);
+    color: var(--blue-light);
     height: 100%;
 }
 
 #latent-diagram-size {
     color: var(--blue-lighter);
     font-weight: 800;
-    font-size: 2rem;
-    margin-top: -1rem;
+    font-size: 1.25rem;
 }
 
 .latent-loss-arrows {
@@ -326,7 +353,7 @@ progress::-webkit-progress-bar {
     display: flex;
     justify-content: space-between;
     width: 102%;
-    top: calc(30% - 100px);
+    top: calc(30% - 60px);
     left: 0;
     pointer-events: none;
 }
@@ -335,82 +362,82 @@ progress::-webkit-progress-bar {
 #arrow-right-pointer-events {
     pointer-events: auto;
     height: 100%;
-    width: 6rem;
+    width: 3.75rem;
     position: absolute;
     top: 0;
 }
 
 #arrow-left-pointer-events {
-    left: -2rem;
+    left: -1.25rem;
 }
 
 #arrow-right-pointer-events {
-    right: -2rem;
+    right: -1.25rem;
 }
 
 .arrow-left,
 .arrow-right {
     border: 4px solid;
-    border-color: transparent transparent transparent var(--theme-secondary);
+    border-color: transparent transparent transparent var(--blue-light);
     border-radius: 50%;
-    height: 18rem;
-    width: 10rem;
+    height: 10.25rem;
+    width: 6.25rem;
 }
 
 .arrow-left:after,
 .arrow-right:before {
     content: "";
     position: absolute;
-    height: 2rem;
-    width: 2rem;
+    height: 1.25rem;
+    width: 1.25rem;
     transform: rotate(10deg);
 }
 
 .arrow-right {
-    border-color: transparent var(--theme-secondary) transparent transparent;
+    border-color: transparent var(--blue-light) transparent transparent;
     right: 0;
 }
 
 .arrow-left:after {
-    border-right: 4px solid var(--theme-secondary);
-    border-bottom: 4px solid var(--theme-secondary);
-    bottom: 2rem;
-    left: 0.4rem;
+    border-right: 4px solid var(--blue-light);
+    border-bottom: 4px solid var(--blue-light);
+    bottom: 1.25rem;
+    left: 0.25rem;
 }
 
 .arrow-right:before {
     content: "";
     position: absolute;
-    border-left: 4px solid var(--theme-secondary);
-    border-top: 4px solid var(--theme-secondary);
-    height: 2rem;
-    width: 2rem;
-    top: 2rem;
-    right: 0.4rem;
+    border-left: 4px solid var(--blue-light);
+    border-top: 4px solid var(--blue-light);
+    height: 1.25rem;
+    width: 1.25rem;
+    top: 1.25rem;
+    right: 0.25rem;
 }
 
 .arrow-left:before,
 .arrow-right:after {
     content: "NLL";
-    font-weight: 600;
-    font-size: 2rem;
+    font-weight: 700;
+    font-size: 1.25rem;
     color: var(--blue-lighter);
     position: absolute;
     background-color: black;
 }
 
 .arrow-left:before {
-    left: -1rem;
-    top: 2rem;
+    left: -0.5rem;
+    top: 1rem;
 }
 
 .arrow-right:after {
     content: "MMD";
-    right: -1rem;
-    bottom: 2rem;
+    right: -0.5rem;
+    bottom: 1rem;
 }
 
-.graph-model-itermediate-step {
+.graph-model-intermediate-step {
     position: relative;
 }
 
@@ -419,7 +446,7 @@ progress::-webkit-progress-bar {
     width: 180%;
     left: -60%;
     top: calc(50% - var(--forward-arrow-height)/2);
-    background: linear-gradient(to right, transparent 0%, var(--theme-secondary) 56%);
+    background: linear-gradient(to right, transparent 0%, var(--blue-light) 56%);
     position: absolute;
     pointer-events: none;
 }
@@ -432,7 +459,7 @@ progress::-webkit-progress-bar {
     content: "";
     position: absolute;
     border: calc(var(--forward-arrow-height)/2) solid transparent;
-    border-left-color: var(--theme-secondary);
+    border-left-color: var(--blue-light);
     top: 0;
     right: calc(-1*var(--forward-arrow-height));
 }
@@ -441,7 +468,7 @@ progress::-webkit-progress-bar {
     content: "ENCODING";
     color: black;
     opacity: 0.45;
-    font-size: 1.8rem;
+    font-size: 1.125rem;
     font-weight: bolder;
     letter-spacing: 2px;
     font-style: italic;
@@ -450,7 +477,7 @@ progress::-webkit-progress-bar {
     line-height: var(--forward-arrow-height);
 }
 
-.graph-model-itermediate-step:last-of-type .forward-arrow:before {
+.graph-model-intermediate-step:last-of-type .forward-arrow:before {
     content: "DECODING";
 }
 
@@ -460,14 +487,95 @@ progress::-webkit-progress-bar {
     transition: filter 0.1s linear, opacity 0.1s linear;
 }
 
-/* Overwriting bootstrap tooltip styling */
-.tooltip {
-    --bs-tooltip-arrow-height: 1.5rem;
-    --bs-tooltip-arrow-width: 1.5rem;
-    --bs-tooltip-bg: white;
-    --bs-tooltip-color: var(--grey-dark);
-    --bs-tooltip-font-size: 1.4rem;
-    --bs-tooltip-padding-x: 1rem;
-    --bs-tooltip-padding-y: 1rem;
-    --bs-tooltip-max-width: 30rem;
+.button {
+    width: 100%;
+}
+
+#cancel-generation-button,
+#cancel-training-button {
+    background: radial-gradient(61.22% 95.86% at 26.96% 100%, var(--red-light) 0%, var(--red-dark) 100%);
+    border: 1px solid rgb(245, 118, 119, 0.4);
+}
+
+#cancel-generation-button:hover,
+#cancel-training-button:hover {
+    background: radial-gradient(61.22% 95.86% at 26.96% 100%, var(--red-dark) 0%, var(--red-dark) 100%);
+}
+
+.mantine-Tooltip-tooltip {
+    padding: 1rem;
+}
+
+.mantine-Tooltip-tooltip h5 {
+    margin-top: 0;
+}
+
+.mantine-Tooltip-tooltip p {
+    margin-bottom: 0;
+}
+
+
+/* Overrides left column styling */
+.settings-and-buttons {
+    color: #f5f7fb;
+    background-color: rgba(32, 34, 57, 0.5);
+    transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 1.25rem;
+    overflow: hidden;
+}
+
+.settings-and-buttons .mantine-Tabs-panel {
+    padding: 0 1.625rem 1.625rem;
+}
+
+.settings-and-buttons .mantine-Tabs-tab {
+    border-top-width: 0;
+}
+
+.settings-and-buttons .mantine-Tabs-tab:where([data-active]) {
+    background: rgba(18, 19, 31, 0.55);
+}
+
+.settings-and-buttons .mantine-Tabs-tab:where(:not([data-active])) span {
+    color: #CECFD0;
+}
+
+.title-section {
+    background: none;
+}
+
+.left-column {
+    background-image: url("/assets/background2.svg");
+    background-size: cover;
+}
+
+label,
+.mantine-InputWrapper-label.mantine-CheckboxGroup-label {
+    color: var(--grey-lighter);
+}
+
+.mantine-Slider-markLabel {
+    color: var(--grey-lighter);
+}
+
+.slider.mantine-Slider-root {
+    --slider-color: var(--teal-dark) !important;
+}
+
+.mantine-Checkbox-root .mantine-Checkbox-input {
+    --checkbox-color: var(--teal-dark) !important;
+}
+
+.left-column-collapse {
+    background: none;
+}
+
+.left-column-collapse:hover,
+.left-column-collapse:focus {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.collapse-arrow:before, .collapse-arrow:after {
+    background: var(--grey-lighter);
 }

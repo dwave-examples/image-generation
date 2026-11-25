@@ -19,17 +19,17 @@ import random
 import time
 from pathlib import Path
 from typing import Optional
-import torch
 
 import networkx as nx
-import dwave_networkx as dnx
-from dwave.system import DWaveSampler
+import torch
+from dwave.graphs import drawing, chimera_graph, pegasus_graph, zephyr_graph
 from dwave.plugins.torch.models import DiscreteVariationalAutoencoder
-from src.model_wrapper import get_dataset
+from dwave.system import DWaveSampler
 from plotly import graph_objects as go
 from torchvision.utils import save_image
 
-from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT, THEME_COLOR_SECONDARY
+from demo_configs import GENERATE_NEW_MODEL_DIAGRAM, GRAPH_COLORS, SHARPEN_OUTPUT
+from src.model_wrapper import get_dataset
 from src.utils.common import get_graph_mapping, greedy_get_subgraph
 
 MODEL_PATH = Path("models")
@@ -39,7 +39,7 @@ IMAGE_GEN_FILE_PREFIX = "generated_epoch_"
 IMAGE_RECON_FILE_PREFIX = "reconstructed_epoch_"
 LOSS_PREFIX = "loss_"
 
-MODEL_DIAGRAM_PATH = "assets/model_diagram/"
+MODEL_DIAGRAM_PATH = "static/model_diagram/"
 LATENT_ENCODED_FILE = MODEL_DIAGRAM_PATH + "latent_encoded.json"
 LATENT_QPU_FILE = MODEL_DIAGRAM_PATH + "latent_qpu.json"
 STEP_1_FILE = MODEL_DIAGRAM_PATH + "step_1_input.png"
@@ -66,6 +66,7 @@ def get_example_image(index: int = 0) -> torch.Tensor:
     save_image(example_image, STEP_1_FILE)
 
     return example_image
+
 
 def create_model_files(
     model: DiscreteVariationalAutoencoder,
@@ -125,17 +126,9 @@ def generate_model_diagram(model: DiscreteVariationalAutoencoder, example_image:
         json.dump(discretes[0, 0].tolist(), f)
 
     step_4 = model._dvae.decoder.merge_batch_dim_and_replica_dim(
-        model._dvae.decoder.make_2x2_images(
-            model._dvae.decoder.increase_latent_dim(discretes)
-        )
+        model._dvae.decoder.make_2x2_images(model._dvae.decoder.increase_latent_dim(discretes))
     )
-    save_image(
-        step_4[0].unsqueeze(1),
-        STEP_4_FILE,
-        normalize=True,
-        scale_each=True,
-        padding=1
-    )
+    save_image(step_4[0].unsqueeze(1), STEP_4_FILE, normalize=True, scale_each=True, padding=1)
 
     step_5 = model._dvae.decoder(discretes)
     save_image(step_5[0], STEP_5_FILE)
@@ -208,7 +201,7 @@ def execute_training(
             sharpen=SHARPEN_OUTPUT,
             save_to_file=f"{JSON_FILE_DIR}/{IMAGE_GEN_FILE_PREFIX}{epoch+1}.json",
         )
-        fig_reconstructed = model.generate_reconstucted_samples(
+        fig_reconstructed = model.generate_reconstructed_samples(
             sharpen=SHARPEN_OUTPUT,
             save_to_file=f"{JSON_FILE_DIR}/{IMAGE_RECON_FILE_PREFIX}{epoch+1}.json",
         )
@@ -279,7 +272,7 @@ def get_node_trace(
     except Exception:  # Expected when QPU or latents setting is updated
         print(
             "Accurate latent color mapping not available for the requested graph nodes.",
-            "Generating random data."
+            "Generating random data.",
         )
         random.seed(10)
         rand_nodes = [random.randint(0, 1) for _ in G.nodes()]
@@ -303,7 +296,13 @@ def get_node_trace(
     return node_trace
 
 
-def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int], file_name: str, show_edges: bool=True) -> go.Figure:
+def get_fig(
+    G: nx.Graph,
+    node_coords: dict[int, tuple],
+    mapping: dict[int, int],
+    file_name: str,
+    show_edges: bool = True,
+) -> go.Figure:
     """Generate a Plotly fig of a graph with highlighted subgraph.
 
     Args:
@@ -319,7 +318,7 @@ def get_fig(G: nx.Graph, node_coords: dict[int, tuple], mapping: dict[int, int],
     data = []
 
     if show_edges:
-        edge_trace = get_edge_trace(G, node_coords, THEME_COLOR_SECONDARY, 0.3)
+        edge_trace = get_edge_trace(G, node_coords, "#2A7DE1", 0.3)
         data.append(edge_trace)
 
     node_trace = get_node_trace(G, node_coords, mapping, file_name)
@@ -367,11 +366,13 @@ def generate_model_fig(
     qpu_topology = qpu.properties["topology"]["type"]
 
     if qpu_topology == "pegasus":
-        node_coords = dnx.drawing.pegasus_layout(dnx.pegasus_graph(qpu_shape), crosses=True)
+        node_coords = drawing.pegasus_layout(
+            pegasus_graph(qpu_shape), crosses=True
+        )
     elif qpu_topology == "zephyr":
-        node_coords = dnx.drawing.zephyr_layout(dnx.zephyr_graph(qpu_shape))
+        node_coords = drawing.zephyr_layout(zephyr_graph(qpu_shape))
     elif qpu_topology == "chimera":
-        node_coords = dnx.drawing.chimera_layout(dnx.chimera_graph(qpu_shape))
+        node_coords = drawing.chimera_layout(chimera_graph(qpu_shape))
     else:
         raise ValueError(f"Unknown QPU topology: {qpu_topology}")
 
